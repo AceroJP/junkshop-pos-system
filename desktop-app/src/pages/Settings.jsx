@@ -1,0 +1,161 @@
+import React, { useState, useEffect } from 'react';
+import Swal from 'sweetalert2';
+
+const Settings = ({ shopSettings, onSettingsUpdate }) => {
+    const [printers, setPrinters] = useState([]);
+    const [loadingPrinters, setLoadingPrinters] = useState(false);
+    const [selectedPrinter, setSelectedPrinter] = useState(shopSettings.printer_name || '');
+    const [printerType, setPrinterType] = useState(shopSettings.printer_type || 'EPSON');
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        loadPrinters();
+    }, []);
+
+    const loadPrinters = async () => {
+        setLoadingPrinters(true);
+        try {
+            const systemPrinters = await window.electron.getPrinters();
+            setPrinters(systemPrinters);
+        } catch (err) {
+            console.error('Failed to load printers', err);
+        } finally {
+            setLoadingPrinters(false);
+        }
+    };
+
+    const handleSavePrinter = async () => {
+        setSaving(true);
+        try {
+            await window.electron.saveSetting('printer_name', selectedPrinter);
+            await window.electron.saveSetting('printer_type', printerType);
+            
+            await Swal.fire({
+                title: 'Settings Saved',
+                text: 'Printer configuration has been updated.',
+                icon: 'success',
+                confirmButtonColor: '#0ea5e9'
+            });
+            
+            if (onSettingsUpdate) onSettingsUpdate();
+        } catch (err) {
+            Swal.fire('Error', 'Failed to save settings', 'error');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const testPrint = async () => {
+        if (!selectedPrinter) {
+            Swal.fire('Wait!', 'Please select a printer first', 'info');
+            return;
+        }
+
+        try {
+            const result = await window.electron.reprintReceipt(null); // Passing null to trigger a test print if supported
+            if (result.success) {
+                Swal.fire('Success', 'Test print sent!', 'success');
+            } else {
+                Swal.fire('Error', result.error || 'Print failed', 'error');
+            }
+        } catch (err) {
+            Swal.fire('Error', 'An unexpected error occurred', 'error');
+        }
+    };
+
+    return (
+        <div className="max-w-4xl mx-auto space-y-10 animate-fade-in pb-20">
+            <div className="space-y-1">
+                <h2 className="text-4xl font-black text-slate-900 uppercase tracking-tight leading-none">Settings</h2>
+                <p className="text-slate-400 font-bold uppercase tracking-[0.2em] text-[10px]">Configure system & hardware</p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-8">
+                {/* Printer Configuration */}
+                <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
+                    <div className="p-8 lg:p-10 border-b border-slate-50 bg-slate-50/50 flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-brand-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-brand-100">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Printer Setup</h3>
+                                <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Select your thermal receipt printer</p>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={loadPrinters}
+                            className="p-3 text-slate-400 hover:text-brand-600 transition-colors"
+                            title="Refresh Printer List"
+                        >
+                            <svg className={`w-5 h-5 ${loadingPrinters ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        </button>
+                    </div>
+
+                    <div className="p-8 lg:p-10 space-y-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="space-y-3">
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Select Printer</label>
+                                <select 
+                                    value={selectedPrinter}
+                                    onChange={(e) => setSelectedPrinter(e.target.value)}
+                                    className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all outline-none font-bold text-slate-900 appearance-none"
+                                >
+                                    <option value="">-- Choose a Printer --</option>
+                                    {printers.map((p, idx) => (
+                                        <option key={idx} value={p.name}>{p.name} {p.isDefault ? '(Default)' : ''}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="space-y-3">
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Printer Type / Protocol</label>
+                                <select 
+                                    value={printerType}
+                                    onChange={(e) => setPrinterType(e.target.value)}
+                                    className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all outline-none font-bold text-slate-900 appearance-none"
+                                >
+                                    <option value="EPSON">EPSON (ESC/POS)</option>
+                                    <option value="STAR">STAR</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-slate-50">
+                            <button 
+                                onClick={testPrint}
+                                className="px-8 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-black rounded-2xl transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-2"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                Print Test Page
+                            </button>
+                            <button 
+                                onClick={handleSavePrinter}
+                                disabled={saving}
+                                className="flex-1 px-8 py-4 bg-brand-600 hover:bg-brand-700 text-white font-black rounded-2xl shadow-xl shadow-brand-100 transition-all uppercase tracking-widest text-xs"
+                            >
+                                {saving ? 'Saving...' : 'Save Printer Configuration'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Info Box */}
+                <div className="bg-brand-50 border-2 border-brand-100 p-8 rounded-[2rem] flex items-start gap-6">
+                    <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-brand-600 shrink-0 shadow-sm">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                    <div>
+                        <h4 className="text-brand-900 font-black uppercase tracking-tight text-sm">Printer Compatibility</h4>
+                        <p className="text-brand-700/70 font-bold text-xs mt-1 leading-relaxed">
+                            This system supports most USB and Network thermal printers using the ESC/POS protocol (Epson standard). 
+                            If your printer is not listed, make sure it is installed in your Windows Settings under "Printers & Scanners".
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default Settings;

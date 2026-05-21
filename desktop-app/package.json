@@ -4,9 +4,11 @@
   "description": "Offline-first POS system for junkshops",
   "main": "electron/main.js",
   "scripts": {
-    "start": "electron .",
-    "dev": "electron .",
-    "build": "electron-builder"
+    "vite:dev": "vite",
+    "electron:dev": "wait-on http://localhost:3001 && electron .",
+    "dev": "concurrently \"npm run vite:dev\" \"npm run electron:dev\"",
+    "build": "vite build && electron-builder",
+    "preview": "vite preview"
   },
   "keywords": [
     "pos",
@@ -18,12 +20,27 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "sqlite3": "^6.0.1"
+    "axios": "^1.16.1",
+    "bcryptjs": "^3.0.3",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
+    "node-machine-id": "^1.1.12",
+    "node-thermal-printer": "^4.6.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "sqlite3": "^6.0.1",
+    "sweetalert2": "^11.26.24"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.0",
+    "@vitejs/plugin-react": "^6.0.2",
+    "autoprefixer": "^10.5.0",
+    "concurrently": "^9.2.1",
     "electron": "^42.2.0",
-    "electron-builder": "^26.8.1"
+    "electron-builder": "^26.8.1",
+    "postcss": "^8.5.15",
+    "tailwindcss": "^4.3.0",
+    "vite": "^8.0.14",
+    "wait-on": "^9.0.10"
   }
 }
