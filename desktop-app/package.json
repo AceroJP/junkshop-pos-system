@@ -1,0 +1,29 @@
+{
+  "name": "junkshop-pos",
+  "version": "1.0.0",
+  "description": "Offline-first POS system for junkshops",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "build": "electron-builder"
+  },
+  "keywords": [
+    "pos",
+    "junkshop",
+    "electron",
+    "react",
+    "sqlite"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "sqlite3": "^6.0.1"
+  },
+  "devDependencies": {
+    "electron": "^42.2.0",
+    "electron-builder": "^26.8.1"
+  }
+}
