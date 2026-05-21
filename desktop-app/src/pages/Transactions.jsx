@@ -48,18 +48,47 @@ const Transactions = ({ shopSettings }) => {
             const result = await window.electron.reprintReceipt(id);
             if (result.success) {
                 Swal.fire({
-                    title: 'Reprinting...',
-                    text: 'Receipt has been sent to the printer',
+                    title: 'Printing...',
+                    text: 'The receipt has been sent to your printer.',
                     icon: 'success',
                     timer: 2000,
                     showConfirmButton: false,
-                    confirmButtonColor: '#0ea5e9'
+                    confirmButtonColor: '#0ea5e9',
+                    customClass: {
+                        title: 'font-black uppercase tracking-tight',
+                        popup: 'rounded-[2rem]'
+                    }
                 });
             } else {
-                Swal.fire('Error', result.error || 'Failed to print receipt', 'error');
+                let errorMessage = 'Something went wrong while printing.';
+                if (result.error && result.error.includes('No driver set')) {
+                    errorMessage = 'Printer not found. Please check your printer connection or settings.';
+                } else if (result.error) {
+                    errorMessage = result.error;
+                }
+                
+                Swal.fire({
+                    title: 'Printer Error',
+                    text: errorMessage,
+                    icon: 'error',
+                    confirmButtonColor: '#0ea5e9',
+                    customClass: {
+                        title: 'font-black uppercase tracking-tight',
+                        popup: 'rounded-[2rem]'
+                    }
+                });
             }
         } catch (err) {
-            Swal.fire('Error', 'An unexpected error occurred', 'error');
+            Swal.fire({
+                title: 'Error',
+                text: 'We could not start the printing process. Please try again.',
+                icon: 'error',
+                confirmButtonColor: '#0ea5e9',
+                customClass: {
+                    title: 'font-black uppercase tracking-tight',
+                    popup: 'rounded-[2rem]'
+                }
+            });
         }
     };
 
@@ -161,7 +190,7 @@ const Transactions = ({ shopSettings }) => {
                                             </div>
                                         </td>
                                         <td className="px-6 lg:px-10 py-6">
-                                            <span className="font-bold text-slate-600 text-sm">{t.customer_name || <span className="text-slate-300 italic">Walk-in</span>}</span>
+                                            <span className="font-bold text-slate-600 text-sm">{t.customer_name || 'Walk-in'}</span>
                                         </td>
                                         <td className="px-6 lg:px-10 py-6">
                                             <span className="font-bold text-slate-600 text-sm">{t.cashier_name || 'System'}</span>
@@ -205,20 +234,20 @@ const Transactions = ({ shopSettings }) => {
 
             {/* Receipt Details Modal */}
             {isModalOpen && selectedTransaction && (
-                <div className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:p-10 animate-fade-in pointer-events-none">
-                    <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,0.15)] border border-slate-100 pointer-events-auto max-h-[90vh] flex flex-col overflow-hidden">
-                        <div className="p-8 lg:p-10 flex flex-col h-full">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-10 animate-fade-in pointer-events-auto overflow-y-auto">
+                    <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,0.15)] border border-slate-100 my-auto flex flex-col">
+                        <div className="p-8 lg:p-10 flex flex-col">
                             <div className="flex items-center justify-between mb-8">
                                 <div>
                                     <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Receipt Details</h3>
                                     <p className="text-brand-600 font-bold text-xs uppercase tracking-widest mt-1">{selectedTransaction.transaction_number}</p>
                                 </div>
-                                <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-rose-500 transition-colors">
+                                <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-rose-500 transition-colors p-2 hover:bg-rose-50 rounded-xl">
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                                 </button>
                             </div>
                             
-                            <div className="flex-1 overflow-y-auto space-y-8 pr-2 custom-scrollbar">
+                            <div className="space-y-8">
                                 {/* Summary Info */}
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="bg-slate-50 p-4 rounded-2xl">
@@ -265,25 +294,25 @@ const Transactions = ({ shopSettings }) => {
                                     </div>
                                     <div className="flex justify-between items-center border-t border-white/10 pt-4">
                                         <span className="text-xs font-black uppercase tracking-widest">Total Change</span>
-                                        <span className="text-2xl font-black text-brand-400">₱{selectedTransaction.change_amount.toFixed(2)}</span>
+                                        <span className="text-2xl font-black text-emerald-400">₱{selectedTransaction.change_amount.toFixed(2)}</span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="mt-8 pt-4 border-t border-slate-50 flex gap-4">
+                            <div className="mt-8 pt-6 border-t border-slate-50 flex gap-3">
                                 <button 
                                     disabled={downloading}
                                     onClick={() => handleDownloadPDF(selectedTransaction)}
-                                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black py-5 rounded-2xl shadow-xl shadow-blue-100 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-sm"
+                                    className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-600 font-black py-4 rounded-xl transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-[10px]"
                                 >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                                     Download PDF
                                 </button>
                                 <button 
                                     onClick={() => handleReprint(selectedTransaction.id)}
-                                    className="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-black py-5 rounded-2xl shadow-xl shadow-brand-100 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-sm"
+                                    className="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-black py-4 rounded-xl transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-[10px]"
                                 >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                                     Reprint Receipt
                                 </button>
                             </div>
