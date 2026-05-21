@@ -200,6 +200,74 @@ ipcMain.handle('save-pdf', async (event, { filename, base64Data }) => {
     return { success: false };
 });
 
+ipcMain.handle('save-excel', async (event, { filename, base64Data }) => {
+    const { dialog } = require('electron');
+    const fs = require('fs');
+    
+    const { filePath } = await dialog.showSaveDialog(mainWindow, {
+        title: 'Export Report to Excel',
+        defaultPath: filename,
+        filters: [{ name: 'Excel Files', extensions: ['xlsx'] }]
+    });
+
+    if (filePath) {
+        const buffer = Buffer.from(base64Data, 'base64');
+        fs.writeFileSync(filePath, buffer);
+        return { success: true, filePath };
+    }
+    return { success: false };
+});
+
+ipcMain.handle('get-report-stats', async (event, { period }) => {
+    try {
+        let dateFilter = "";
+        if (period === 'today') {
+            dateFilter = "date(created_at) = date('now')";
+        } else if (period === 'week') {
+            dateFilter = "date(created_at) >= date('now', '-7 days')";
+        } else if (period === 'month') {
+            dateFilter = "date(created_at) >= date('now', 'start of month')";
+        } else if (period === 'year') {
+            dateFilter = "date(created_at) >= date('now', 'start of year')";
+        } else {
+            dateFilter = "1=1"; // Overall
+        }
+
+        // 1. Total Purchases
+        const purchases = await db.get(`SELECT SUM(total_amount) as total FROM transactions WHERE ${dateFilter}`);
+        
+        // 2. Sales by Product (Chart Data)
+        const salesByProduct = await db.all(`
+            SELECT p.name, SUM(ti.weight_kg) as total_weight, SUM(ti.subtotal) as total_amount 
+            FROM transaction_items ti 
+            JOIN products p ON ti.product_id = p.id 
+            JOIN transactions t ON ti.transaction_id = t.id
+            WHERE ${dateFilter.replace(/created_at/g, 't.created_at')}
+            GROUP BY p.id 
+            ORDER BY total_amount DESC
+        `);
+
+        // 3. Transactions for the period
+        const transactions = await db.all(`
+            SELECT t.*, u.full_name as cashier_name 
+            FROM transactions t 
+            LEFT JOIN users u ON t.cashier_id = u.id 
+            WHERE ${dateFilter.replace(/created_at/g, 't.created_at')}
+            ORDER BY t.created_at DESC
+        `);
+
+        return {
+            success: true,
+            totalPurchases: purchases.total || 0,
+            salesByProduct,
+            transactions
+        };
+    } catch (err) {
+        console.error('Report stats failed', err);
+        return { success: false, error: err.message };
+    }
+});
+
 // Settings Handlers
 ipcMain.handle('get-settings', async () => {
     const rows = await db.all('SELECT * FROM settings');
@@ -249,6 +317,8 @@ ipcMain.handle('logout', async () => {
 
 // App lifecycle
 app.whenReady().then(() => {
+    const { Menu } = require('electron');
+    Menu.setApplicationMenu(null);
     createWindow();
 
     app.on('activate', () => {

@@ -22,6 +22,8 @@ contextBridge.exposeInMainWorld('electron', {
     getTransactionItems: (id) => ipcRenderer.invoke('get-transaction-items', id),
     reprintReceipt: (id) => ipcRenderer.invoke('reprint-receipt', id),
     savePDF: (data) => ipcRenderer.invoke('save-pdf', data),
+    saveExcel: (data) => ipcRenderer.invoke('save-excel', data),
+    getReportStats: (params) => ipcRenderer.invoke('get-report-stats', params),
 
     // Settings
     getSettings: () => ipcRenderer.invoke('get-settings'),
