@@ -89,6 +89,16 @@ class CustomerController extends Controller
 
     public function downloadInstaller()
     {
+        // Check for any .exe file in the installers directory
+        $installerDir = storage_path('app/public/installers');
+        $files = glob($installerDir . '/*.exe');
+        
+        if (!empty($files)) {
+            $latestInstaller = $files[0]; // Take the first one found
+            return response()->download($latestInstaller, 'JunkshopPOS-Setup.exe');
+        }
+
+        // Fallback to external link from settings
         $downloadLink = Setting::get('installer_download_link', '#');
 
         if (!$downloadLink || $downloadLink === '#') {

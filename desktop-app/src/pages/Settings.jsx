@@ -8,6 +8,10 @@ const Settings = ({ shopSettings, onSettingsUpdate }) => {
     const [printerType, setPrinterType] = useState(shopSettings.printer_type || 'EPSON');
     const [saving, setSaving] = useState(false);
 
+    // Shop Details State
+    const [shopName, setShopName] = useState(shopSettings.shop_name || '');
+    const [shopLogo, setShopLogo] = useState(shopSettings.shop_logo || '');
+
     useEffect(() => {
         loadPrinters();
     }, []);
@@ -31,17 +35,51 @@ const Settings = ({ shopSettings, onSettingsUpdate }) => {
             await window.electron.saveSetting('printer_type', printerType);
             
             await Swal.fire({
-                title: 'Settings Saved',
+                title: 'Printer Settings Saved',
                 text: 'Printer configuration has been updated.',
                 icon: 'success',
-                confirmButtonColor: '#0ea5e9'
+                confirmButtonColor: '#0ea5e9',
+                customClass: { popup: 'rounded-[2rem]' }
             });
             
             if (onSettingsUpdate) onSettingsUpdate();
         } catch (err) {
-            Swal.fire('Error', 'Failed to save settings', 'error');
+            Swal.fire('Error', 'Failed to save printer settings', 'error');
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleSaveShopDetails = async () => {
+        setSaving(true);
+        try {
+            await window.electron.saveSetting('shop_name', shopName);
+            await window.electron.saveSetting('shop_logo', shopLogo);
+            
+            await Swal.fire({
+                title: 'Shop Details Saved',
+                text: 'Your shop information has been updated.',
+                icon: 'success',
+                confirmButtonColor: '#0ea5e9',
+                customClass: { popup: 'rounded-[2rem]' }
+            });
+            
+            if (onSettingsUpdate) onSettingsUpdate();
+        } catch (err) {
+            Swal.fire('Error', 'Failed to save shop details', 'error');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleLogoUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setShopLogo(reader.result);
+            };
+            reader.readAsDataURL(file);
         }
     };
 
@@ -71,6 +109,73 @@ const Settings = ({ shopSettings, onSettingsUpdate }) => {
             </div>
 
             <div className="grid grid-cols-1 gap-8">
+                {/* Shop Information Configuration */}
+                <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
+                    <div className="p-8 lg:p-10 border-b border-slate-50 bg-slate-50/50 flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-100">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Shop Profile</h3>
+                                <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Identity & Branding</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-8 lg:p-10 space-y-8">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+                            {/* Logo Column */}
+                            <div className="space-y-4 flex flex-col items-center">
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-full text-center md:text-left">Shop Logo</label>
+                                <div className="relative group cursor-pointer w-32 h-32 lg:w-40 lg:h-40">
+                                    <div className="w-full h-full bg-slate-50 border-4 border-slate-100 rounded-[2.5rem] flex items-center justify-center overflow-hidden transition-all group-hover:border-brand-500">
+                                        {shopLogo ? (
+                                            <img src={shopLogo} className="w-full h-full object-cover" alt="Preview" />
+                                        ) : (
+                                            <svg className="w-12 h-12 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                        )}
+                                    </div>
+                                    <input 
+                                        type="file" 
+                                        accept="image/*"
+                                        onChange={handleLogoUpload}
+                                        className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                                    />
+                                    <div className="absolute inset-0 bg-brand-600/60 flex items-center justify-center rounded-[2.5rem] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" /></svg>
+                                    </div>
+                                </div>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center">Click to upload JPG/PNG</p>
+                            </div>
+
+                            {/* Details Column */}
+                            <div className="md:col-span-2 space-y-6">
+                                <div className="space-y-3">
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Junkshop Name</label>
+                                    <input 
+                                        type="text" 
+                                        value={shopName}
+                                        onChange={(e) => setShopName(e.target.value)}
+                                        className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all outline-none font-bold text-slate-900"
+                                        placeholder="Enter shop name"
+                                    />
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                                    <button 
+                                        onClick={handleSaveShopDetails}
+                                        disabled={saving}
+                                        className="flex-1 px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl shadow-xl shadow-emerald-100 transition-all uppercase tracking-widest text-xs"
+                                    >
+                                        {saving ? 'Saving...' : 'Update Branding'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Printer Configuration */}
                 <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
                     <div className="p-8 lg:p-10 border-b border-slate-50 bg-slate-50/50 flex items-center justify-between">

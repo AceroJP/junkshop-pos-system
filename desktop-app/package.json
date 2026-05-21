@@ -7,8 +7,40 @@
     "vite:dev": "vite",
     "electron:dev": "wait-on http://localhost:3001 && electron .",
     "dev": "concurrently \"npm run vite:dev\" \"npm run electron:dev\"",
-    "build": "vite build && electron-builder",
+    "build": "vite build",
+    "dist:win": "vite build && electron-builder --win",
     "preview": "vite preview"
+  },
+  "build": {
+    "appId": "com.joenil.junkshop.pos",
+    "productName": "Junkshop POS",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "services/**/*",
+      "database/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "runAfterFinish": true
+    },
+    "extraResources": [
+      {
+        "from": "database/",
+        "to": "database/"
+      }
+    ]
   },
   "keywords": [
     "pos",

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Swal from 'sweetalert2';
 import POS from './pages/POS';
 import Login from './pages/Login';
 import Activation from './pages/Activation';
@@ -37,8 +38,27 @@ function App() {
   };
 
   const handleLogout = async () => {
-    await window.electron.logout();
-    setUser(null);
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: "You will be logged out of the system.",
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#0ea5e9',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Yes, logout',
+      cancelButtonText: 'No, stay',
+      customClass: {
+        popup: 'rounded-[2rem]',
+        title: 'font-black uppercase tracking-tight',
+        confirmButton: 'rounded-xl font-bold uppercase tracking-widest text-xs px-6 py-3',
+        cancelButton: 'rounded-xl font-bold uppercase tracking-widest text-xs px-6 py-3'
+      }
+    });
+
+    if (result.isConfirmed) {
+      await window.electron.logout();
+      setUser(null);
+    }
   };
 
   // 1. Loading state

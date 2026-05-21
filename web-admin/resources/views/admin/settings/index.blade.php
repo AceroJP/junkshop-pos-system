@@ -77,10 +77,13 @@
                         </div>
                     </div>
                     <div class="space-y-2">
-                        <label class="text-sm font-black text-slate-700 uppercase tracking-wider">Installer Download Link (Direct Link to .exe)</label>
+                        <label class="text-sm font-black text-slate-700 uppercase tracking-wider">Installer Download Link (External Fallback)</label>
                         <input type="text" name="installer_download_link" value="{{ old('installer_download_link', $settings['installer_download_link'] ?? '') }}" 
                             class="w-full bg-slate-50 border-slate-200 rounded-2xl px-4 py-3.5 focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all font-bold text-slate-900"
                             placeholder="https://example.com/downloads/junkshop-pos.exe">
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2">
+                            * Note: If you upload any <span class="text-brand-600">.exe</span> file to <span class="font-mono bg-slate-100 px-1 py-0.5 rounded text-slate-600 italic">storage/app/public/installers/</span>, the system will serve that file directly instead of this link.
+                        </p>
                         @error('installer_download_link') <p class="text-rose-500 text-xs font-bold">{{ $message }}</p> @enderror
                     </div>
                 </div>

@@ -22,7 +22,7 @@ Route::get('/dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 // Customer Routes
-Route::middleware(['auth', 'verified'])->prefix('customer')->name('customer.')->group(function () {
+Route::middleware(['auth', 'verified', 'customer'])->prefix('customer')->name('customer.')->group(function () {
     Route::get('/dashboard', [CustomerController::class, 'dashboard'])->name('dashboard');
     Route::post('/submit-payment', [CustomerController::class, 'submitPayment'])->name('submit-payment');
     Route::post('/cancel-payment/{payment}', [CustomerController::class, 'cancelPayment'])->name('cancel-payment');
@@ -30,7 +30,7 @@ Route::middleware(['auth', 'verified'])->prefix('customer')->name('customer.')->
 });
 
 // Admin Routes
-Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::post('/payments/{payment}/verify', [AdminController::class, 'verifyPayment'])->name('payments.verify');
     Route::post('/payments/{payment}/reject', [AdminController::class, 'rejectPayment'])->name('payments.reject');
