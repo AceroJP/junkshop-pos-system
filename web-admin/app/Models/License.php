@@ -6,11 +6,16 @@ use Illuminate\Database\Eloquent\Model;
 
 class License extends Model
 {
-    protected $fillable = ['license_key', 'user_id', 'status'];
+    protected $fillable = ['license_key', 'user_id', 'payment_id', 'status', 'activated_at'];
 
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function payment()
+    {
+        return $this->belongsTo(Payment::class);
     }
 
     public function device()

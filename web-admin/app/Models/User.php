@@ -67,14 +67,19 @@ class User extends Authenticatable
         ];
     }
 
-    public function payments()
-    {
-        return $this->hasMany(Payment::class);
-    }
-
     public function licenses()
     {
         return $this->hasMany(License::class);
+    }
+
+    public function license()
+    {
+        return $this->hasOne(License::class)->latestOfMany();
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
     }
 
     public function downloads()

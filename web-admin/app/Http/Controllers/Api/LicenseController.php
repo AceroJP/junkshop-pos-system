@@ -37,7 +37,10 @@ class LicenseController extends Controller
         }
 
         // Activate
-        $license->update(['status' => 'active']);
+        $license->update([
+            'status' => 'active',
+            'activated_at' => now(),
+        ]);
         Device::create([
             'device_id' => $request->device_id,
             'license_id' => $license->id,

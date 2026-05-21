@@ -407,8 +407,8 @@
                             <h3 class="text-2xl font-black text-slate-900 mb-2">Lifetime License</h3>
                             <div class="flex items-center justify-center gap-1 mb-2">
                                 <span class="text-3xl font-bold text-slate-900">₱</span>
-                                <span class="text-6xl font-black text-slate-900 tracking-tighter">2,999</span>
-                                <span class="text-xl font-bold text-slate-400">.00</span>
+                                <span class="text-6xl font-black text-slate-900 tracking-tighter">{{ number_format(floor($settings['license_price'])) }}</span>
+                                <span class="text-xl font-bold text-slate-400">.{{ sprintf('%02d', ($settings['license_price'] - floor($settings['license_price'])) * 100) }}</span>
                             </div>
                             <p class="text-slate-500 font-bold">One-time payment only</p>
                         </div>
