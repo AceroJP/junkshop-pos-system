@@ -25,12 +25,27 @@ CREATE TABLE IF NOT EXISTS transactions (
     transaction_number TEXT UNIQUE NOT NULL,
     cashier_id INTEGER,
     customer_name TEXT,
+    seller_id INTEGER,
     total_amount REAL NOT NULL,
     payment_received REAL NOT NULL,
     change_amount REAL NOT NULL,
-    status TEXT DEFAULT 'completed',
+    status TEXT DEFAULT 'completed', -- 'completed', 'unpaid', 'partial'
+    paid_amount REAL DEFAULT 0,
+    paid_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(cashier_id) REFERENCES users(id)
+    FOREIGN KEY(cashier_id) REFERENCES users(id),
+    FOREIGN KEY(seller_id) REFERENCES sellers(id)
+);
+
+-- Sellers table
+CREATE TABLE IF NOT EXISTS sellers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL,
+    contact_number TEXT,
+    address TEXT,
+    total_balance_owed REAL DEFAULT 0,
+    last_transaction_date TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Transaction items table
@@ -58,6 +73,18 @@ CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Payments table (tracking individual payments for partial system)
+CREATE TABLE IF NOT EXISTS payments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    seller_id INTEGER,
+    amount REAL NOT NULL,
+    previous_balance REAL NOT NULL,
+    new_balance REAL NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(seller_id) REFERENCES sellers(id)
 );
 
 -- Initial settings for setup status

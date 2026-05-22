@@ -11,17 +11,28 @@ const printReceipt = async (transaction, items) => {
     const rows = await db.all('SELECT * FROM settings WHERE key IN ("printer_name", "printer_type")');
     rows.forEach(row => settings[row.key] = row.value);
 
-    const printerName = settings.printer_name || 'Thermal Printer';
+    const printerName = settings.printer_name;
     const printerType = settings.printer_type === 'STAR' ? PrinterTypes.STAR : PrinterTypes.EPSON;
 
-    let printer = new ThermalPrinter({
-        type: printerType,
-        interface: `printer:${printerName}`,
-        characterSet: 'SLOVENIA',
-        removeSpecialCharacters: false,
-        lineCharacter: "=",
-        width: 32
-    });
+    if (!printerName) {
+        console.warn("Printer name not set in settings, skipping print");
+        return { success: false, error: "Printer not configured" };
+    }
+
+    let printer;
+    try {
+        printer = new ThermalPrinter({
+            type: printerType,
+            interface: `printer:${printerName}`,
+            characterSet: 'SLOVENIA',
+            removeSpecialCharacters: false,
+            lineCharacter: "=",
+            width: 32
+        });
+    } catch (err) {
+        console.error("Failed to initialize printer driver:", err.message);
+        return { success: false, error: "Printer driver error: " + err.message };
+    }
 
     try {
         // If transaction is null, it's a test print
@@ -82,8 +93,21 @@ const printReceipt = async (transaction, items) => {
         printer.setTextDoubleHeight();
         printer.println(`TOTAL: ₱${transaction.total_amount.toFixed(2)}`);
         printer.setTextNormal();
-        printer.println(`Received: ₱${transaction.payment_received.toFixed(2)}`);
-        printer.println(`Change: ₱${transaction.change_amount.toFixed(2)}`);
+
+        if (transaction.status === 'unpaid' || transaction.status === 'partial') {
+            printer.alignCenter();
+            printer.println("********************************");
+            printer.println("        CREDIT RECEIPT         ");
+            printer.println("       (AMOUNT TO BE PAID)     ");
+            printer.println("********************************");
+            printer.alignLeft();
+            printer.println(`Status: ${transaction.status.toUpperCase()}`);
+            printer.println(`Paid: ₱${(transaction.paid_amount || 0).toFixed(2)}`);
+            printer.println(`Balance: ₱${(transaction.total_amount - (transaction.paid_amount || 0)).toFixed(2)}`);
+        } else {
+            printer.println(`Received: ₱${transaction.payment_received.toFixed(2)}`);
+            printer.println(`Change: ₱${transaction.change_amount.toFixed(2)}`);
+        }
         
         printer.alignCenter();
         printer.println("================================");
@@ -98,6 +122,82 @@ const printReceipt = async (transaction, items) => {
     }
 };
 
+/**
+ * Print a payment receipt when a seller is paid
+ */
+const printPaymentReceipt = async (paymentData) => {
+    const { seller, amount, notes, newBalance } = paymentData;
+    
+    // 1. Get printer settings from database
+    const settings = {};
+    const rows = await db.all('SELECT * FROM settings WHERE key IN ("printer_name", "printer_type")');
+    rows.forEach(row => settings[row.key] = row.value);
+
+    const printerName = settings.printer_name;
+    const printerType = settings.printer_type === 'STAR' ? PrinterTypes.STAR : PrinterTypes.EPSON;
+
+    if (!printerName) {
+        console.warn("Printer name not set in settings, skipping payment receipt print");
+        return { success: false, error: "Printer not configured" };
+    }
+
+    let printer;
+    try {
+        printer = new ThermalPrinter({
+            type: printerType,
+            interface: `printer:${printerName}`,
+            characterSet: 'SLOVENIA',
+            removeSpecialCharacters: false,
+            lineCharacter: "=",
+            width: 32
+        });
+    } catch (err) {
+        console.error("Failed to initialize printer driver for payment receipt:", err.message);
+        return { success: false, error: "Printer driver error: " + err.message };
+    }
+
+    try {
+        printer.alignCenter();
+        printer.setTextDoubleHeight();
+        printer.setTextDoubleWidth();
+        printer.println("JUNKSHOP POS");
+        printer.setTextNormal();
+        printer.println("================================");
+        printer.println("        PAYMENT RECEIPT        ");
+        printer.println("================================");
+        
+        printer.alignLeft();
+        printer.println(`Date: ${new Date().toLocaleString()}`);
+        printer.println(`Seller: ${seller.name}`);
+        printer.println("--------------------------------");
+        
+        printer.alignRight();
+        printer.setTextDoubleHeight();
+        printer.println(`PAID: ₱${amount.toFixed(2)}`);
+        printer.setTextNormal();
+        printer.println(`Remaining: ₱${newBalance.toFixed(2)}`);
+        
+        if (notes) {
+            printer.alignLeft();
+            printer.println("--------------------------------");
+            printer.println(`Notes: ${notes}`);
+        }
+        
+        printer.alignCenter();
+        printer.println("--------------------------------");
+        printer.println("\n\n________________\nSeller Signature");
+        printer.println("\nTHANK YOU!");
+        printer.cut();
+
+        await printer.execute();
+        return { success: true };
+    } catch (err) {
+        console.error("Print payment receipt error", err);
+        return { success: false, error: err.message };
+    }
+};
+
 module.exports = {
-    printReceipt
+    printReceipt,
+    printPaymentReceipt
 };

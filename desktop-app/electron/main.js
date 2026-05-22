@@ -50,6 +50,14 @@ ipcMain.handle('check-license', async () => {
     return await license.checkLocalLicense();
 });
 
+ipcMain.handle('check-update', async () => {
+    return await license.checkUpdate();
+});
+
+ipcMain.handle('get-app-version', async () => {
+    return app.getVersion();
+});
+
 // Product Handlers
 ipcMain.handle('get-products', async () => {
     return await db.all('SELECT * FROM products ORDER BY is_active DESC, name ASC');
@@ -141,14 +149,27 @@ ipcMain.handle('reprint-receipt', async (event, transactionId) => {
 });
 
 ipcMain.handle('save-transaction', async (event, transactionData) => {
-    const { total_amount, payment_received, change_amount, items, cashier_id, customer_name } = transactionData;
+    const { total_amount, payment_received, change_amount, items, cashier_id, customer_name, status, seller_id } = transactionData;
     const transaction_number = `TXN-${Date.now()}`;
+    const paymentStatus = status || 'completed';
 
     try {
-        // For now, let's use a serial approach
+        let finalSellerId = seller_id;
+
+        // If Pay Later or customer name provided, ensure seller exists
+        if (customer_name) {
+            const existingSeller = await db.get('SELECT id FROM sellers WHERE name = ?', [customer_name]);
+            if (existingSeller) {
+                finalSellerId = existingSeller.id;
+            } else {
+                const newSeller = await db.run('INSERT INTO sellers (name) VALUES (?)', [customer_name]);
+                finalSellerId = newSeller.id;
+            }
+        }
+
         const txn = await db.run(
-            'INSERT INTO transactions (transaction_number, cashier_id, customer_name, total_amount, payment_received, change_amount) VALUES (?, ?, ?, ?, ?, ?)',
-            [transaction_number, cashier_id, customer_name || null, total_amount, payment_received, change_amount]
+            'INSERT INTO transactions (transaction_number, cashier_id, customer_name, seller_id, total_amount, payment_received, change_amount, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [transaction_number, cashier_id, customer_name || null, finalSellerId || null, total_amount, payment_received, change_amount, paymentStatus]
         );
 
         const transactionId = txn.id;
@@ -157,6 +178,19 @@ ipcMain.handle('save-transaction', async (event, transactionData) => {
             await db.run(
                 'INSERT INTO transaction_items (transaction_id, product_id, weight_kg, subtotal) VALUES (?, ?, ?, ?)',
                 [transactionId, item.id, item.weight, item.subtotal]
+            );
+        }
+
+        // If unpaid, update seller balance
+        if (paymentStatus === 'unpaid' && finalSellerId) {
+            await db.run(
+                'UPDATE sellers SET total_balance_owed = total_balance_owed + ?, last_transaction_date = CURRENT_TIMESTAMP WHERE id = ?',
+                [total_amount, finalSellerId]
+            );
+        } else if (finalSellerId) {
+            await db.run(
+                'UPDATE sellers SET last_transaction_date = CURRENT_TIMESTAMP WHERE id = ?',
+                [finalSellerId]
             );
         }
 
@@ -174,6 +208,115 @@ ipcMain.handle('save-transaction', async (event, transactionData) => {
         return { success: true, transactionId, transaction_number };
     } catch (err) {
         console.error('Transaction failed', err);
+        return { success: false, error: err.message };
+    }
+});
+
+// Sellers Handlers
+ipcMain.handle('get-sellers', async (event, { search = '', filter = 'all' }) => {
+    try {
+        let sql = 'SELECT * FROM sellers WHERE total_balance_owed > 0';
+        const params = [];
+
+        if (search) {
+            sql += ' AND name LIKE ?';
+            params.push(`%${search}%`);
+        }
+
+        sql += ' ORDER BY total_balance_owed DESC, name ASC';
+        return await db.all(sql, params);
+    } catch (err) {
+        console.error('Fetch sellers failed', err);
+        return [];
+    }
+});
+
+ipcMain.handle('get-seller-details', async (event, id) => {
+    try {
+        return await db.get('SELECT * FROM sellers WHERE id = ?', [id]);
+    } catch (err) {
+        console.error('Fetch seller details failed', err);
+        return null;
+    }
+});
+
+ipcMain.handle('get-seller-transactions', async (event, id) => {
+    try {
+        return await db.all('SELECT * FROM transactions WHERE seller_id = ? ORDER BY created_at DESC', [id]);
+    } catch (err) {
+        console.error('Fetch seller transactions failed', err);
+        return [];
+    }
+});
+
+ipcMain.handle('record-payment', async (event, { seller_id, amount, notes }) => {
+    try {
+        // 1. Get seller balance
+        const seller = await db.get('SELECT total_balance_owed FROM sellers WHERE id = ?', [seller_id]);
+        if (!seller || seller.total_balance_owed < amount) {
+            return { success: false, error: 'Invalid amount or seller' };
+        }
+
+        // 2. Find unpaid transactions for this seller to mark as paid
+        const unpaidTransactions = await db.all('SELECT * FROM transactions WHERE seller_id = ? AND status = "unpaid" ORDER BY created_at ASC', [seller_id]);
+        
+        let remainingToPay = amount;
+        for (const txn of unpaidTransactions) {
+            if (remainingToPay <= 0) break;
+
+            const txnOwed = txn.total_amount - (txn.paid_amount || 0);
+            if (remainingToPay >= txnOwed) {
+                // Fully pay this txn
+                await db.run(
+                    'UPDATE transactions SET status = "completed", paid_amount = total_amount, paid_at = CURRENT_TIMESTAMP WHERE id = ?',
+                    [txn.id]
+                );
+                remainingToPay -= txnOwed;
+            } else {
+                // Partially pay this txn
+                await db.run(
+                    'UPDATE transactions SET status = "partial", paid_amount = paid_amount + ?, paid_at = CURRENT_TIMESTAMP WHERE id = ?',
+                    [remainingToPay, txn.id]
+                );
+                remainingToPay = 0;
+            }
+        }
+
+        // 3. Update seller balance
+        await db.run(
+            'UPDATE sellers SET total_balance_owed = total_balance_owed - ? WHERE id = ?',
+            [amount, seller_id]
+        );
+
+        // 4. Print payment receipt
+        try {
+            const updatedSeller = await db.get('SELECT * FROM sellers WHERE id = ?', [seller_id]);
+            const printResult = await printer.printPaymentReceipt({ 
+                seller: updatedSeller, 
+                amount: amount, 
+                notes: notes,
+                newBalance: updatedSeller.total_balance_owed
+            });
+            return { success: true, printSuccess: printResult.success, error: printResult.error };
+        } catch (printErr) {
+            console.error('Payment receipt printing failed', printErr);
+            return { success: true, printSuccess: false, error: printErr.message };
+        }
+    } catch (err) {
+        console.error('Record payment failed', err);
+        return { success: false, error: err.message };
+    }
+});
+
+ipcMain.handle('update-seller-info', async (event, { id, contact_number, address }) => {
+    try {
+        await db.run(
+            'UPDATE sellers SET contact_number = ?, address = ? WHERE id = ?',
+            [contact_number, address, id]
+        );
+        return { success: true };
+    } catch (err) {
+        console.error('Update seller failed', err);
         return { success: false, error: err.message };
     }
 });

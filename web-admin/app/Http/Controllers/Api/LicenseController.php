@@ -7,9 +7,18 @@ use Illuminate\Http\Request;
 
 use App\Models\License;
 use App\Models\Device;
+use App\Models\Setting;
 
 class LicenseController extends Controller
 {
+    public function version()
+    {
+        return response()->json([
+            'version' => Setting::get('app_version', '1.0.0'),
+            'download_url' => route('customer.download')
+        ]);
+    }
+
     public function activate(Request $request)
     {
         $request->validate([

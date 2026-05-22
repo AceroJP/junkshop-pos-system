@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 
-const Products = () => {
+const Products = ({ openModal }) => {
     const [products, setProducts] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
-    const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -17,6 +16,24 @@ const Products = () => {
         loadProducts();
     }, []);
 
+    // Helper to keep modal in sync with form changes
+    const syncModal = (currentEditingProduct, currentFormData, currentLoading) => {
+        if (openModal) {
+            openModal('product', {
+                editingProduct: currentEditingProduct,
+                formData: currentFormData,
+                loading: currentLoading,
+                setFormData: (updatedData) => {
+                    const newData = typeof updatedData === 'function' ? updatedData(currentFormData) : updatedData;
+                    setFormData(newData);
+                    syncModal(currentEditingProduct, newData, currentLoading);
+                },
+                onSave: (e) => handleSave(e, currentEditingProduct, currentFormData),
+                onPhotoUpload: (e) => handlePhotoUpload(e, currentEditingProduct, currentFormData)
+            });
+        }
+    };
+
     const loadProducts = async () => {
         try {
             const data = await window.electron.getProducts();
@@ -26,44 +43,50 @@ const Products = () => {
         }
     };
 
-    const handleSave = async (e) => {
-        e.preventDefault();
-        if (!formData.name || !formData.price_per_kg) return;
+    const handleSave = async (e, currentEditingProduct, currentFormData) => {
+        if (e) e.preventDefault();
+        const activeFormData = currentFormData || formData;
+        const activeEditingProduct = currentEditingProduct || editingProduct;
+
+        if (!activeFormData.name || !activeFormData.price_per_kg) return;
         
         setLoading(true);
+        syncModal(activeEditingProduct, activeFormData, true);
 
         try {
             const result = await window.electron.saveProduct({
-                ...formData,
-                id: editingProduct ? editingProduct.id : null
+                ...activeFormData,
+                id: activeEditingProduct ? activeEditingProduct.id : null
             });
             if (result.success) {
-                setIsModalOpen(false);
+                if (openModal) openModal(null);
                 setEditingProduct(null);
                 setFormData({ name: '', price_per_kg: '', image_path: '' });
                 loadProducts();
                 Swal.fire({
                     title: 'Success!',
-                    text: editingProduct ? 'Product updated successfully' : 'Product added successfully',
+                    text: activeEditingProduct ? 'Product updated successfully' : 'Product added successfully',
                     icon: 'success',
                     confirmButtonColor: '#0ea5e9'
                 });
             }
         } catch (err) {
             Swal.fire('Error', 'Failed to save product', 'error');
+            syncModal(activeEditingProduct, activeFormData, false);
         } finally {
             setLoading(false);
         }
     };
 
     const handleEdit = (product) => {
-        setEditingProduct(product);
-        setFormData({
+        const data = {
             name: product.name,
             price_per_kg: product.price_per_kg,
             image_path: product.image_path
-        });
-        setIsModalOpen(true);
+        };
+        setEditingProduct(product);
+        setFormData(data);
+        syncModal(product, data, false);
     };
 
     const handleDelete = async (id) => {
@@ -112,19 +135,25 @@ const Products = () => {
 
     const openAddModal = () => {
         setEditingProduct(null);
-        setFormData({ name: '', price_per_kg: '', image_path: '' });
-        setIsModalOpen(true);
+        const emptyForm = { name: '', price_per_kg: '', image_path: '' };
+        setFormData(emptyForm);
+        syncModal(null, emptyForm, false);
     };
 
-    const handlePhotoUpload = (e) => {
+    const handlePhotoUpload = async (e, currentEditingProduct, currentFormData) => {
         const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (readerEvent) => {
-                setFormData({ ...formData, image_path: readerEvent.target.result });
-            };
-            reader.readAsDataURL(file);
-        }
+        if (!file) return;
+
+        const activeFormData = currentFormData || formData;
+        const activeEditingProduct = currentEditingProduct || editingProduct;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const newData = { ...activeFormData, image_path: event.target.result };
+            setFormData(newData);
+            syncModal(activeEditingProduct, newData, loading);
+        };
+        reader.readAsDataURL(file);
     };
 
     const filteredProducts = products.filter(product => 
@@ -226,22 +255,27 @@ const Products = () => {
                                             <div className="flex items-center justify-end gap-2 lg:gap-3 transition-opacity">
                                                 <button 
                                                     onClick={() => handleEdit(product)}
-                                                    className="p-2 lg:p-3 bg-slate-100 text-slate-400 rounded-xl lg:rounded-2xl hover:bg-brand-50 hover:text-brand-600 transition-all active:scale-90"
+                                                    className="flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-400 rounded-xl hover:bg-brand-50 hover:text-brand-600 transition-all active:scale-95 whitespace-nowrap"
+                                                    title="Edit Product"
                                                 >
                                                     <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                                    <span className="text-[10px] font-black uppercase tracking-widest">Edit</span>
                                                 </button>
                                                 <button 
                                                     onClick={() => toggleStatus(product.id)} 
                                                     title={product.is_active ? 'Deactivate' : 'Activate'} 
-                                                    className={`p-2 lg:p-3 rounded-xl lg:rounded-2xl transition-all active:scale-90 ${product.is_active ? 'bg-emerald-50 text-emerald-400 hover:bg-emerald-500 hover:text-white' : 'bg-amber-50 text-amber-400 hover:bg-amber-500 hover:text-white'}`}
+                                                    className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all active:scale-95 whitespace-nowrap ${product.is_active ? 'bg-emerald-50 text-emerald-400 hover:bg-emerald-500 hover:text-white' : 'bg-amber-50 text-amber-400 hover:bg-amber-500 hover:text-white'}`}
                                                 >
                                                     <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                                                    <span className="text-[10px] font-black uppercase tracking-widest">{product.is_active ? 'Active' : 'Inactive'}</span>
                                                 </button>
                                                 <button 
                                                     onClick={() => handleDelete(product.id)}
-                                                    className="p-2 lg:p-3 bg-rose-50 text-rose-400 rounded-xl lg:rounded-2xl hover:bg-rose-500 hover:text-white transition-all active:scale-90"
+                                                    className="flex items-center gap-2 px-3 py-2 bg-rose-50 text-rose-400 rounded-xl hover:bg-rose-500 hover:text-white transition-all active:scale-95 whitespace-nowrap"
+                                                    title="Delete Product"
                                                 >
                                                     <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                    <span className="text-[10px] font-black uppercase tracking-widest">Delete</span>
                                                 </button>
                                             </div>
                                         </td>
@@ -252,84 +286,6 @@ const Products = () => {
                     </table>
                 </div>
             </div>
-
-            {/* Add Product Modal */}
-            {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:p-10 animate-fade-in pointer-events-none">
-                    <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,0.15)] border border-slate-100 pointer-events-auto max-h-[90vh] flex flex-col">
-                        <div className="p-8 lg:p-10 overflow-y-auto">
-                            <div className="flex items-center justify-between mb-8">
-                                <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
-                                    {editingProduct ? 'Edit Product' : 'Add New Product'}
-                                </h3>
-                                <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-rose-500 transition-colors">
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                                </button>
-                            </div>
-                            
-                            <form onSubmit={handleSave} className="space-y-6">
-                                {/* Photo Upload Section */}
-                                <div className="space-y-3">
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Product Photo</label>
-                                    <div className="flex items-center gap-6">
-                                        <div className="w-24 h-24 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
-                                            {formData.image_path ? (
-                                                <img src={formData.image_path} className="w-full h-full object-cover" />
-                                            ) : (
-                                                <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                            )}
-                                        </div>
-                                        <div className="flex-1">
-                                            <input type="file" id="product-photo" onChange={handlePhotoUpload} accept="image/*" className="hidden" />
-                                            <label htmlFor="product-photo" className="inline-flex items-center gap-2 px-4 py-2 bg-brand-50 text-brand-700 text-xs font-black uppercase tracking-widest rounded-xl cursor-pointer hover:bg-brand-100 transition-colors">
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                                                Upload Photo
-                                            </label>
-                                            <p className="text-[9px] text-slate-400 font-bold uppercase mt-2">JPG, PNG up to 1MB</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-3">
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Product Name</label>
-                                    <input 
-                                        type="text" 
-                                        required
-                                        autoFocus
-                                        value={formData.name}
-                                        onChange={e => setFormData({...formData, name: e.target.value})}
-                                        className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all outline-none font-bold text-slate-900"
-                                        placeholder="e.g. Copper Wire"
-                                    />
-                                </div>
-
-                                <div className="space-y-3">
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Price per kg</label>
-                                    <div className="relative">
-                                        <span className="absolute left-6 top-1/2 -translate-y-1/2 font-black text-slate-300">₱</span>
-                                        <input 
-                                            type="number" 
-                                            step="0.01"
-                                            required
-                                            value={formData.price_per_kg}
-                                            onChange={e => setFormData({...formData, price_per_kg: e.target.value})}
-                                            className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all outline-none font-bold text-slate-900"
-                                            placeholder="0.00"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="flex gap-4 pt-4">
-                                    <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-black py-5 rounded-2xl transition-all uppercase tracking-widest text-sm">Cancel</button>
-                                    <button type="submit" disabled={loading} className="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-black py-5 rounded-2xl shadow-xl shadow-brand-100 transition-all uppercase tracking-widest text-sm">
-                                        {loading ? 'Saving...' : 'Save Product'}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

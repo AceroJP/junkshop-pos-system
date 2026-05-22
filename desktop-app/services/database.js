@@ -58,18 +58,33 @@ function initializeDatabase() {
             console.error('Error initializing database schema', err);
         } else {
             console.log('Database schema initialized');
-            // Migration: Add customer_name to transactions if it doesn't exist
-            db.run("ALTER TABLE transactions ADD COLUMN customer_name TEXT", (err) => {
-                if (err) {
-                    if (err.message.includes("duplicate column name")) {
-                        console.log('Migration: customer_name column already exists');
-                    } else {
+            
+            // Migrations for Credit Management
+            const migrations = [
+                "ALTER TABLE transactions ADD COLUMN customer_name TEXT",
+                "ALTER TABLE transactions ADD COLUMN seller_id INTEGER",
+                "ALTER TABLE transactions ADD COLUMN paid_amount REAL DEFAULT 0",
+                "ALTER TABLE transactions ADD COLUMN paid_at TIMESTAMP",
+                `CREATE TABLE IF NOT EXISTS payments (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    seller_id INTEGER,
+                    amount REAL NOT NULL,
+                    previous_balance REAL NOT NULL,
+                    new_balance REAL NOT NULL,
+                    notes TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY(seller_id) REFERENCES sellers(id)
+                )`
+            ];
+
+            migrations.forEach(sql => {
+                db.run(sql, (err) => {
+                    if (err && !err.message.includes("duplicate column name")) {
                         console.error('Migration error:', err.message);
                     }
-                } else {
-                    console.log('Migration: customer_name column added successfully');
-                }
+                });
             });
+
             ensureAdminUser();
         }
     });

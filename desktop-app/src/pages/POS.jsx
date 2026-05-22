@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 
-const POS = ({ user }) => {
+const POS = ({ user, openModal }) => {
     const [products, setProducts] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [cart, setCart] = useState([]);
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [weight, setWeight] = useState('');
     const [customerName, setCustomerName] = useState('');
-    const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -21,24 +20,73 @@ const POS = ({ user }) => {
     };
 
     const addToCart = (product) => {
-        setSelectedProduct(product);
         setWeight('');
+        setSelectedProduct(product);
+        if (openModal) {
+            openModal('weight', {
+                product: product,
+                weight: '',
+                setWeight: (val) => {
+                    setWeight(val);
+                    // We need to keep the modal data in sync with the weight state
+                    // We'll use a local variable to ensure we have the latest value
+                    openModal('weight', {
+                        product: product,
+                        weight: val,
+                        setWeight: (newVal) => {
+                            setWeight(newVal);
+                            // Recursively update to keep sync
+                            // This is a bit hacky but ensures the modal stays open and synced
+                            updateWeightInModal(product, newVal);
+                        },
+                        onConfirm: () => confirmAddToCart(product, val)
+                    });
+                },
+                onConfirm: () => confirmAddToCart(product, '')
+            });
+        }
     };
 
-    const confirmAddToCart = () => {
-        const w = parseFloat(weight);
-        if (isNaN(w) || w <= 0) return;
+    // Helper to keep weight synced without closing/reopening
+    const updateWeightInModal = (product, currentWeight) => {
+        if (openModal) {
+            openModal('weight', {
+                product: product,
+                weight: currentWeight,
+                setWeight: (val) => {
+                    setWeight(val);
+                    updateWeightInModal(product, val);
+                },
+                onConfirm: () => confirmAddToCart(product, currentWeight)
+            });
+        }
+    };
+
+    const confirmAddToCart = (product, currentWeight) => {
+        const w = parseFloat(currentWeight);
+        if (isNaN(w) || w <= 0) {
+            Swal.fire({
+                title: 'Invalid Weight',
+                text: 'Please enter a valid weight greater than 0.',
+                icon: 'warning',
+                confirmButtonColor: '#0ea5e9',
+                customClass: { popup: 'rounded-[2rem]' }
+            });
+            return;
+        }
 
         const newItem = {
-            id: selectedProduct.id,
-            name: selectedProduct.name,
-            price_per_kg: selectedProduct.price_per_kg,
+            id: product.id,
+            name: product.name,
+            price_per_kg: product.price_per_kg,
             weight: w,
-            subtotal: selectedProduct.price_per_kg * w
+            subtotal: product.price_per_kg * w
         };
 
-        setCart([...cart, newItem]);
+        setCart(prevCart => [...prevCart, newItem]);
         setSelectedProduct(null);
+        setWeight('');
+        if (openModal) openModal(null);
     };
 
     const removeFromCart = (index) => {
@@ -53,27 +101,63 @@ const POS = ({ user }) => {
         product.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const handleCheckout = async () => {
+    const openCheckoutModal = () => {
+        if (openModal) {
+            openModal('checkout', {
+                totalAmount,
+                loading: false,
+                onCheckout: (status) => handleCheckout(status)
+            });
+        }
+    };
+
+    const handleCheckout = async (status) => {
+        // Validation: Customer Name is REQUIRED for Pay Later (unpaid)
+        if (status === 'unpaid' && !customerName.trim()) {
+            Swal.fire({
+                title: 'Seller Name Required',
+                text: 'Please enter the seller name to record this as a credit transaction.',
+                icon: 'warning',
+                confirmButtonColor: '#0ea5e9',
+                customClass: {
+                    popup: 'rounded-[2rem]',
+                    title: 'font-black uppercase tracking-tight'
+                }
+            });
+            return;
+        }
+
         setLoading(true);
+        // Update modal state to show loading
+        if (openModal) {
+            openModal('checkout', {
+                totalAmount,
+                loading: true,
+                onCheckout: (status) => handleCheckout(status)
+            });
+        }
+
         try {
             const result = await window.electron.saveTransaction({
                 total_amount: totalAmount,
-                payment_received: totalAmount, // For a junkshop, we pay exactly the total
+                payment_received: status === 'unpaid' ? 0 : totalAmount,
                 change_amount: 0,
                 items: cart,
                 cashier_id: user.id,
-                customer_name: customerName.trim() || null
+                customer_name: customerName.trim() || null,
+                status: status // 'completed' or 'unpaid'
             });
 
             if (result.success) {
+                const isUnpaid = status === 'unpaid';
                 Swal.fire({
-                    title: 'Payout Successful!',
+                    title: isUnpaid ? 'Credit Recorded!' : 'Payout Successful!',
                     html: `<div class="text-left space-y-2">
-                        <p class="text-xl font-black text-center mb-4">Total Paid: <span class="text-brand-600">₱${totalAmount.toFixed(2)}</span></p>
+                        <p class="text-xl font-black text-center mb-4">${isUnpaid ? 'Owed' : 'Total Paid'}: <span class="text-brand-600">₱${totalAmount.toFixed(2)}</span></p>
                         ${customerName ? `<p class="text-sm text-slate-600 text-center font-bold">Seller: ${customerName}</p>` : ''}
-                        <p class="text-xs text-slate-400 text-center uppercase tracking-widest">Receipt has been sent to printer</p>
+                        <p class="text-xs text-slate-400 text-center uppercase tracking-widest">${isUnpaid ? 'Credit Receipt generated' : 'Receipt has been sent to printer'}</p>
                     </div>`,
-                    icon: 'success',
+                    icon: isUnpaid ? 'info' : 'success',
                     confirmButtonColor: '#0ea5e9',
                     confirmButtonText: 'DONE',
                     customClass: {
@@ -83,12 +167,26 @@ const POS = ({ user }) => {
                 });
                 setCart([]);
                 setCustomerName('');
-                setIsCheckoutModalOpen(false);
+                if (openModal) openModal(null);
             } else {
                 Swal.fire('Error', 'Error saving transaction: ' + result.error, 'error');
+                if (openModal) {
+                    openModal('checkout', {
+                        totalAmount,
+                        loading: false,
+                        onCheckout: (status) => handleCheckout(status)
+                    });
+                }
             }
         } catch (err) {
             Swal.fire('Error', 'Checkout failed', 'error');
+            if (openModal) {
+                openModal('checkout', {
+                    totalAmount,
+                    loading: false,
+                    onCheckout: (status) => handleCheckout(status)
+                });
+            }
         } finally {
             setLoading(false);
         }
@@ -98,13 +196,17 @@ const POS = ({ user }) => {
         <div className="flex flex-col xl:flex-row h-full gap-8 pb-12 xl:pb-0">
             {/* Product Grid */}
             <div className="flex-1 space-y-8">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Available Items</h2>
-                    <div className="bg-slate-200 h-10 w-full sm:w-64 rounded-xl flex items-center px-4 gap-3 focus-within:ring-2 focus-within:ring-brand-500/20 transition-all">
-                        <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div className="space-y-1">
+                        <h2 className="text-4xl font-black text-slate-900 uppercase tracking-tight leading-none">We Buy</h2>
+                        <p className="text-slate-400 font-bold uppercase tracking-[0.2em] text-[10px]">Select items to add to order</p>
+                    </div>
+                    
+                    <div className="bg-white border-2 border-slate-100 h-14 w-full sm:w-80 rounded-2xl flex items-center px-4 gap-3 focus-within:ring-4 focus-within:ring-brand-500/10 focus-within:border-brand-500 transition-all">
+                        <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         <input 
                             type="text" 
-                            placeholder="Search products..." 
+                            placeholder="Search items..." 
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="bg-transparent outline-none text-sm font-bold w-full text-slate-900 placeholder:text-slate-400" 
@@ -188,7 +290,8 @@ const POS = ({ user }) => {
                                     <span className="font-black text-slate-900 text-sm">₱{item.subtotal.toFixed(2)}</span>
                                     <button 
                                         onClick={() => removeFromCart(index)}
-                                        className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-500 hover:text-white"
+                                        className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center transition-all hover:bg-rose-500 hover:text-white"
+                                        title="Remove Item"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                                     </button>
@@ -205,98 +308,13 @@ const POS = ({ user }) => {
                     </div>
                     <button 
                         disabled={cart.length === 0}
-                        onClick={() => setIsCheckoutModalOpen(true)}
+                        onClick={openCheckoutModal}
                         className="w-full bg-brand-600 hover:bg-brand-700 disabled:bg-slate-700 text-white font-black py-5 rounded-2xl shadow-xl shadow-brand-900/50 transition-all hover:-translate-y-1 active:scale-95 text-lg uppercase tracking-widest"
                     >
                         Checkout Order
                     </button>
                 </div>
             </div>
-
-            {/* Weight Input Modal */}
-            {selectedProduct && (
-                <div className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:p-20 animate-fade-in pointer-events-none">
-                    <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,0.15)] border border-slate-100 pointer-events-auto max-h-[90vh] flex flex-col">
-                        <div className="p-10 overflow-y-auto">
-                            <div className="flex items-center justify-between mb-2">
-                                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Enter Weight</h3>
-                                <button onClick={() => setSelectedProduct(null)} className="text-slate-400 hover:text-rose-500 transition-colors">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                                </button>
-                            </div>
-                            <p className="text-slate-500 font-bold text-sm mb-8 uppercase tracking-widest">Item: <span className="text-brand-600">{selectedProduct.name}</span></p>
-                            
-                            <div className="space-y-6">
-                                <div className="relative">
-                                    <input 
-                                        type="number" 
-                                        autoFocus
-                                        value={weight}
-                                        onChange={(e) => setWeight(e.target.value)}
-                                        placeholder="0.00"
-                                        className="w-full px-6 py-5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all outline-none font-black text-2xl text-center"
-                                    />
-                                    <span className="absolute right-6 top-1/2 -translate-y-1/2 font-black text-slate-300 uppercase tracking-widest">kg</span>
-                                </div>
-
-                                <div className="flex gap-4">
-                                    <button onClick={() => setSelectedProduct(null)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-black py-4 rounded-2xl transition-all uppercase tracking-widest">Cancel</button>
-                                    <button onClick={confirmAddToCart} className="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-brand-100 transition-all uppercase tracking-widest">Confirm</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Checkout Modal */}
-            {isCheckoutModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:p-20 animate-fade-in pointer-events-none">
-                    <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,0.15)] border border-slate-100 pointer-events-auto max-h-[90vh] flex flex-col">
-                        <div className="bg-slate-900 p-8 text-white shrink-0">
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-xl font-black uppercase tracking-tight">Confirm Payout</h3>
-                                <button onClick={() => setIsCheckoutModalOpen(false)} className="text-slate-400 hover:text-white transition-colors">
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                                </button>
-                            </div>
-                            <div className="flex items-center justify-between mt-6">
-                                <span className="text-slate-400 font-bold uppercase tracking-widest text-xs">Total Payout</span>
-                                <span className="text-3xl font-black text-emerald-400">₱{totalAmount.toFixed(2)}</span>
-                            </div>
-                        </div>
-                        
-                        <div className="p-10 space-y-8 text-center">
-                            <div className="space-y-4">
-                                <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
-                                    <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" /></svg>
-                                </div>
-                                <div>
-                                    <h4 className="text-xl font-black text-slate-900 uppercase tracking-tight">Ready to Pay</h4>
-                                    <p className="text-slate-500 font-bold text-sm mt-1 uppercase tracking-widest">Verify weights before confirming</p>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-4 pt-4">
-                                <button 
-                                    disabled={loading}
-                                    onClick={() => setIsCheckoutModalOpen(false)} 
-                                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-black py-4 rounded-2xl transition-all uppercase tracking-widest"
-                                >
-                                    Cancel
-                                </button>
-                                <button 
-                                    disabled={loading || totalAmount <= 0}
-                                    onClick={handleCheckout} 
-                                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-black py-4 rounded-2xl shadow-lg shadow-emerald-100 transition-all uppercase tracking-widest"
-                                >
-                                    {loading ? 'Processing...' : 'Confirm Payout'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

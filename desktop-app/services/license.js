@@ -34,6 +34,40 @@ const checkLocalLicense = async () => {
 };
 
 /**
+ * Check for updates from the web admin
+ */
+const checkUpdate = async () => {
+    try {
+        const currentVersion = app.getVersion();
+        const response = await axios.get(`${API_URL}/version`);
+        
+        if (response.status === 200) {
+            const remoteVersion = response.data.version;
+            const downloadUrl = response.data.download_url;
+
+            // Simple comparison (can be improved with semver)
+            if (remoteVersion !== currentVersion) {
+                return { 
+                    updateAvailable: true, 
+                    currentVersion, 
+                    remoteVersion,
+                    downloadUrl
+                };
+            }
+        }
+        return { updateAvailable: false };
+    } catch (err) {
+        // Fail silently or with a simple warning if server is offline
+        if (err.code === 'ECONNREFUSED') {
+            console.warn('Update server is offline (ECONNREFUSED)');
+        } else {
+            console.error('Update check failed:', err.message);
+        }
+        return { updateAvailable: false };
+    }
+};
+
+/**
  * Activate the app using a license key
  */
 const activateLicense = async (licenseKey) => {
@@ -64,5 +98,6 @@ const activateLicense = async (licenseKey) => {
 module.exports = {
     getFingerprint,
     checkLocalLicense,
-    activateLicense
+    activateLicense,
+    checkUpdate
 };

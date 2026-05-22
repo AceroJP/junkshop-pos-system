@@ -2,13 +2,10 @@ import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import { generateReceiptPDF } from '../utils/pdfGenerator';
 
-const Transactions = ({ shopSettings }) => {
+const Transactions = ({ shopSettings, openModal }) => {
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedTransaction, setSelectedTransaction] = useState(null);
-    const [transactionItems, setTransactionItems] = useState([]);
-    const [isModalOpen, setIsModalOpen] = useState(false);
     const [downloading, setDownloading] = useState(false);
 
     useEffect(() => {
@@ -35,9 +32,14 @@ const Transactions = ({ shopSettings }) => {
     const viewDetails = async (transaction) => {
         try {
             const items = await window.electron.getTransactionItems(transaction.id);
-            setSelectedTransaction(transaction);
-            setTransactionItems(items);
-            setIsModalOpen(true);
+            if (openModal) {
+                openModal('receipt', {
+                    transaction,
+                    items,
+                    onDownload: handleDownloadPDF,
+                    onReprint: handleReprint
+                });
+            }
         } catch (err) {
             Swal.fire('Error', 'Failed to load transaction details', 'error');
         }
@@ -60,11 +62,9 @@ const Transactions = ({ shopSettings }) => {
                     }
                 });
             } else {
-                let errorMessage = 'Something went wrong while printing.';
-                if (result.error && result.error.includes('No driver set')) {
-                    errorMessage = 'Printer not found. Please check your printer connection or settings.';
-                } else if (result.error) {
-                    errorMessage = result.error;
+                let errorMessage = result.error || 'Something went wrong while printing.';
+                if (result.error && (result.error.includes('No driver set') || result.error.includes('Printer driver error'))) {
+                    errorMessage = 'Printer not found or driver error. Please check your printer connection or settings.';
                 }
                 
                 Swal.fire({
@@ -95,11 +95,7 @@ const Transactions = ({ shopSettings }) => {
     const handleDownloadPDF = async (transaction) => {
         setDownloading(true);
         try {
-            let items = transactionItems;
-            if (!selectedTransaction || selectedTransaction.id !== transaction.id) {
-                items = await window.electron.getTransactionItems(transaction.id);
-            }
-
+            const items = await window.electron.getTransactionItems(transaction.id);
             const pdfData = await generateReceiptPDF(transaction, items, shopSettings);
             const result = await window.electron.savePDF(pdfData);
 
@@ -127,7 +123,7 @@ const Transactions = ({ shopSettings }) => {
     );
 
     return (
-        <div className="max-w-6xl mx-auto space-y-10 animate-fade-in pb-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10 animate-fade-in pb-20">
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div className="space-y-1">
@@ -150,15 +146,15 @@ const Transactions = ({ shopSettings }) => {
             {/* Transactions Table */}
             <div className="bg-white rounded-[2rem] lg:rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full min-w-[800px]">
+                    <table className="w-full min-w-[1000px]">
                         <thead className="bg-slate-50/50 border-b border-slate-100">
                             <tr>
-                                <th className="px-6 lg:px-10 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Transaction ID</th>
-                                <th className="px-6 lg:px-10 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Date & Time</th>
-                                <th className="px-6 lg:px-10 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Customer</th>
-                                <th className="px-6 lg:px-10 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Cashier</th>
-                                <th className="px-6 lg:px-10 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Total Amount</th>
-                                <th className="px-6 lg:px-10 py-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Actions</th>
+                                <th className="px-6 lg:px-8 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Transaction ID</th>
+                                <th className="px-6 lg:px-8 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Date & Time</th>
+                                <th className="px-6 lg:px-8 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Customer</th>
+                                <th className="px-6 lg:px-8 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Status</th>
+                                <th className="px-6 lg:px-8 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Total Amount</th>
+                                <th className="px-6 lg:px-8 py-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
@@ -172,7 +168,7 @@ const Transactions = ({ shopSettings }) => {
                                 <tr>
                                     <td colSpan="6" className="px-10 py-20 text-center">
                                         <div className="flex flex-col items-center gap-4 opacity-20">
-                                            <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                            <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1.01.293.707V19a2 2 0 01-2 2z" /></svg>
                                             <p className="font-black uppercase tracking-[0.3em] text-xs">No transactions found</p>
                                         </div>
                                     </td>
@@ -180,47 +176,57 @@ const Transactions = ({ shopSettings }) => {
                             ) : (
                                 filteredTransactions.map(t => (
                                     <tr key={t.id} className="hover:bg-slate-50/50 transition-colors group">
-                                        <td className="px-6 lg:px-10 py-6">
+                                        <td className="px-6 lg:px-8 py-6">
                                             <span className="font-black text-slate-900 uppercase tracking-tight text-sm">{t.transaction_number}</span>
                                         </td>
-                                        <td className="px-6 lg:px-10 py-6">
+                                        <td className="px-6 lg:px-8 py-6">
                                             <div className="flex flex-col">
                                                 <span className="font-bold text-slate-700 text-sm">{new Date(t.created_at + ' UTC').toLocaleDateString()}</span>
                                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(t.created_at + ' UTC').toLocaleTimeString()}</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 lg:px-10 py-6">
+                                        <td className="px-6 lg:px-8 py-6">
                                             <span className="font-bold text-slate-600 text-sm">{t.customer_name || 'Walk-in'}</span>
                                         </td>
-                                        <td className="px-6 lg:px-10 py-6">
-                                            <span className="font-bold text-slate-600 text-sm">{t.cashier_name || 'System'}</span>
+                                        <td className="px-6 lg:px-8 py-6">
+                                            <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${
+                                                t.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 
+                                                t.status === 'unpaid' ? 'bg-rose-50 text-rose-600' : 
+                                                t.status === 'partial' ? 'bg-amber-50 text-amber-600' :
+                                                'bg-slate-50 text-slate-600'
+                                            }`}>
+                                                {t.status}
+                                            </span>
                                         </td>
-                                        <td className="px-6 lg:px-10 py-6">
+                                        <td className="px-6 lg:px-8 py-6">
                                             <span className="font-black text-brand-600 text-lg">₱{t.total_amount.toFixed(2)}</span>
                                         </td>
-                                        <td className="px-6 lg:px-10 py-6 text-right">
-                                            <div className="flex items-center justify-end gap-3">
+                                        <td className="px-6 lg:px-8 py-6 text-right">
+                                            <div className="flex items-center justify-end gap-2">
                                                 <button 
                                                     onClick={() => viewDetails(t)}
-                                                    className="p-3 bg-slate-100 text-slate-500 rounded-2xl hover:bg-brand-50 hover:text-brand-600 transition-all active:scale-90"
+                                                    className="flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-500 rounded-xl hover:bg-brand-50 hover:text-brand-600 transition-all active:scale-95 whitespace-nowrap"
                                                     title="View Details"
                                                 >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                                    <span className="text-[10px] font-black uppercase tracking-widest">View</span>
                                                 </button>
                                                 <button 
                                                     disabled={downloading}
                                                     onClick={() => handleDownloadPDF(t)}
-                                                    className="p-3 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition-all active:scale-90"
+                                                    className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all active:scale-95 whitespace-nowrap"
                                                     title="Download PDF"
                                                 >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                                    <span className="text-[10px] font-black uppercase tracking-widest">PDF</span>
                                                 </button>
                                                 <button 
                                                     onClick={() => handleReprint(t.id)}
-                                                    className="p-3 bg-brand-50 text-brand-600 rounded-2xl hover:bg-brand-600 hover:text-white transition-all active:scale-90"
+                                                    className="flex items-center gap-2 px-3 py-2 bg-brand-50 text-brand-600 rounded-xl hover:bg-brand-600 hover:text-white transition-all active:scale-95 whitespace-nowrap"
                                                     title="Reprint Receipt"
                                                 >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                                    <span className="text-[10px] font-black uppercase tracking-widest">Print</span>
                                                 </button>
                                             </div>
                                         </td>
@@ -231,95 +237,6 @@ const Transactions = ({ shopSettings }) => {
                     </table>
                 </div>
             </div>
-
-            {/* Receipt Details Modal */}
-            {isModalOpen && selectedTransaction && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-10 animate-fade-in pointer-events-auto overflow-y-auto">
-                    <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,0.15)] border border-slate-100 my-auto flex flex-col">
-                        <div className="p-8 lg:p-10 flex flex-col">
-                            <div className="flex items-center justify-between mb-8">
-                                <div>
-                                    <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Receipt Details</h3>
-                                    <p className="text-brand-600 font-bold text-xs uppercase tracking-widest mt-1">{selectedTransaction.transaction_number}</p>
-                                </div>
-                                <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-rose-500 transition-colors p-2 hover:bg-rose-50 rounded-xl">
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                                </button>
-                            </div>
-                            
-                            <div className="space-y-8">
-                                {/* Summary Info */}
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-slate-50 p-4 rounded-2xl">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Date</p>
-                                        <p className="font-bold text-slate-900 text-sm">{new Date(selectedTransaction.created_at + ' UTC').toLocaleString()}</p>
-                                    </div>
-                                    <div className="bg-slate-50 p-4 rounded-2xl">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Cashier</p>
-                                        <p className="font-bold text-slate-900 text-sm">{selectedTransaction.cashier_name || 'System'}</p>
-                                    </div>
-                                    {selectedTransaction.customer_name && (
-                                        <div className="bg-slate-50 p-4 rounded-2xl col-span-2">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Customer</p>
-                                            <p className="font-bold text-slate-900 text-sm">{selectedTransaction.customer_name}</p>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Items List */}
-                                <div className="space-y-4">
-                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">Purchased Items</h4>
-                                    <div className="space-y-3">
-                                        {transactionItems.map((item, idx) => (
-                                            <div key={idx} className="flex justify-between items-center">
-                                                <div>
-                                                    <p className="font-black text-slate-900 text-sm uppercase">{item.product_name}</p>
-                                                    <p className="text-[10px] font-bold text-slate-400">{item.weight_kg}kg × ₱{(item.subtotal / item.weight_kg).toFixed(2)}</p>
-                                                </div>
-                                                <span className="font-black text-slate-900">₱{item.subtotal.toFixed(2)}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Totals */}
-                                <div className="bg-slate-900 rounded-3xl p-6 text-white space-y-4">
-                                    <div className="flex justify-between items-center text-slate-400">
-                                        <span className="text-[10px] font-black uppercase tracking-widest">Subtotal</span>
-                                        <span className="font-bold">₱{selectedTransaction.total_amount.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-slate-400">
-                                        <span className="text-[10px] font-black uppercase tracking-widest">Received</span>
-                                        <span className="font-bold">₱{selectedTransaction.payment_received.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center border-t border-white/10 pt-4">
-                                        <span className="text-xs font-black uppercase tracking-widest">Total Change</span>
-                                        <span className="text-2xl font-black text-emerald-400">₱{selectedTransaction.change_amount.toFixed(2)}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="mt-8 pt-6 border-t border-slate-50 flex gap-3">
-                                <button 
-                                    disabled={downloading}
-                                    onClick={() => handleDownloadPDF(selectedTransaction)}
-                                    className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-600 font-black py-4 rounded-xl transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-[10px]"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                                    Download PDF
-                                </button>
-                                <button 
-                                    onClick={() => handleReprint(selectedTransaction.id)}
-                                    className="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-black py-4 rounded-xl transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-[10px]"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                                    Reprint Receipt
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

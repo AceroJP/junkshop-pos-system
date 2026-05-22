@@ -8,6 +8,7 @@ import Setup from './pages/Setup';
 import Transactions from './pages/Transactions';
 import Settings from './pages/Settings';
 import Reports from './pages/Reports';
+import Sellers from './pages/Sellers';
 
 function App() {
   const [isLicenseValid, setIsLicenseValid] = useState(null);
@@ -15,12 +16,29 @@ function App() {
   const [shopSettings, setShopSettings] = useState({});
   const [user, setUser] = useState(null);
   const [currentPage, setCurrentPage] = useState('POS');
+  const [appVersion, setAppVersion] = useState('');
+  const [activeModal, setActiveModal] = useState(null); // 'product', 'receipt', 'weight', 'checkout'
+  const [modalData, setModalData] = useState(null);
+
+  useEffect(() => {
+    if (activeModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+  }, [activeModal]);
 
   useEffect(() => {
     initApp();
   }, []);
 
   const initApp = async () => {
+    // 0. Get App Version
+    if (window.electron && window.electron.getAppVersion) {
+      const version = await window.electron.getAppVersion();
+      setAppVersion(version);
+    }
+
     // 1. Check license
     if (window.electron && window.electron.checkLicense) {
       const licenseResult = await window.electron.checkLicense();
@@ -31,6 +49,36 @@ function App() {
         const settings = await window.electron.getSettings();
         setShopSettings(settings);
         setIsSetupComplete(settings.is_setup_complete === '1');
+
+        // 3. Check for updates (only if online)
+        try {
+          const updateResult = await window.electron.checkUpdate();
+          if (updateResult && updateResult.updateAvailable) {
+            Swal.fire({
+              title: 'Update Available!',
+              html: `A new version <b>${updateResult.remoteVersion}</b> is available.<br><small>Current: ${updateResult.currentVersion}</small>`,
+              icon: 'info',
+              showCancelButton: true,
+              confirmButtonText: 'Download Now',
+              cancelButtonText: 'Later',
+              confirmButtonColor: '#16a34a',
+              cancelButtonColor: '#64748b',
+              customClass: {
+                popup: 'rounded-[2rem]',
+                title: 'font-black uppercase tracking-tight',
+                confirmButton: 'rounded-xl font-bold uppercase tracking-widest text-xs px-6 py-3',
+                cancelButton: 'rounded-xl font-bold uppercase tracking-widest text-xs px-6 py-3'
+              }
+            }).then((result) => {
+              if (result.isConfirmed) {
+                // Open the download URL in default browser
+                window.open(updateResult.downloadUrl, '_blank');
+              }
+            });
+          }
+        } catch (updateErr) {
+          console.warn('Silent update check failed', updateErr);
+        }
       }
     } else {
       setIsLicenseValid(false);
@@ -87,9 +135,9 @@ function App() {
 
   // 5. Main App
   return (
-    <div className="flex flex-col lg:flex-row h-screen bg-slate-50 overflow-hidden">
+    <div className="relative flex flex-col lg:flex-row h-screen bg-slate-50 overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-full lg:w-72 bg-white border-b lg:border-b-0 lg:border-r border-slate-100 flex flex-col shrink-0">
+      <aside className={`w-full lg:w-72 bg-white border-b lg:border-b-0 lg:border-r border-slate-100 flex flex-col shrink-0 transition-all duration-300 ${activeModal ? 'blur-sm grayscale-[0.2] pointer-events-none' : ''}`}>
         <div className="h-20 lg:h-24 flex items-center px-6 lg:px-8 gap-4 border-b border-slate-50">
           <div className="w-10 h-10 lg:w-12 lg:h-12 bg-brand-600 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-200 overflow-hidden">
             {shopSettings.shop_logo ? (
@@ -133,6 +181,13 @@ function App() {
                 <span className="whitespace-nowrap">Inventory</span>
               </button>
               <button 
+                onClick={() => setCurrentPage('Sellers')} 
+                className={`flex items-center gap-3 px-4 py-2.5 lg:py-3.5 rounded-2xl transition-all duration-200 font-bold shrink-0 lg:w-full ${currentPage === 'Sellers' ? 'bg-brand-600 text-white shadow-xl shadow-brand-100' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                <span className="whitespace-nowrap">Credit Tracker</span>
+              </button>
+              <button 
                 onClick={() => setCurrentPage('Reports')} 
                 className={`flex items-center gap-3 px-4 py-2.5 lg:py-3.5 rounded-2xl transition-all duration-200 font-bold shrink-0 lg:w-full ${currentPage === 'Reports' ? 'bg-brand-600 text-white shadow-xl shadow-brand-100' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
               >
@@ -152,7 +207,7 @@ function App() {
 
         {/* User Profile / Logout */}
         <div className="p-4 lg:p-6 mt-auto border-t border-slate-50 hidden lg:block">
-          <div className="bg-slate-50 rounded-[2rem] p-4 flex items-center gap-3">
+          <div className="bg-slate-50 rounded-[2rem] p-4 flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-brand-100 rounded-xl flex items-center justify-center text-brand-700 font-black shrink-0">
               {user.username.charAt(0).toUpperCase()}
             </div>
@@ -164,19 +219,293 @@ function App() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3 3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
             </button>
           </div>
+          
+          {appVersion && (
+            <div className="text-center">
+              <span className="text-slate-300 text-[8px] font-black uppercase tracking-[0.3em]">
+                Version {appVersion}
+              </span>
+            </div>
+          )}
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-hidden relative">
+      <main className={`flex-1 overflow-hidden relative transition-all duration-300 ${activeModal ? 'blur-sm grayscale-[0.2]' : ''}`}>
         <div className="absolute inset-0 overflow-y-auto p-4 sm:p-8 lg:p-12">
-          {currentPage === 'POS' && <POS user={user} />}
-          {currentPage === 'Transactions' && <Transactions shopSettings={shopSettings} />}
-          {currentPage === 'Inventory' && <Products />}
+          {currentPage === 'POS' && <POS user={user} openModal={(type, data) => { setActiveModal(type); setModalData(data); }} />}
+          {currentPage === 'Transactions' && <Transactions shopSettings={shopSettings} openModal={(type, data) => { setActiveModal(type); setModalData(data); }} />}
+          {currentPage === 'Inventory' && <Products openModal={(type, data) => { setActiveModal(type); setModalData(data); }} />}
+          {currentPage === 'Sellers' && <Sellers openModal={(type, data) => { setActiveModal(type); setModalData(data); }} />}
           {currentPage === 'Settings' && <Settings shopSettings={shopSettings} onSettingsUpdate={initApp} />}
           {currentPage === 'Reports' && <Reports />}
         </div>
       </main>
+
+      {/* Global Modals Overlay (Covers Sidebar + Content) */}
+      {activeModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-10 animate-fade-in pointer-events-auto">
+          {/* Global Backdrop */}
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setActiveModal(null)}></div>
+          
+          {/* Modal Content - Container for any modal */}
+          <div className="relative z-10 w-full flex items-center justify-center pointer-events-none">
+            {/* 1. Receipt Details Modal */}
+            {activeModal === 'receipt' && modalData && (
+              <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,0.15)] border border-slate-100 flex flex-col max-h-[90vh] pointer-events-auto">
+                <div className="p-8 lg:p-10 flex flex-col overflow-hidden h-full">
+                  <div className="flex items-center justify-between mb-8 shrink-0">
+                    <div>
+                      <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Receipt Details</h3>
+                      <p className="text-brand-600 font-bold text-xs uppercase tracking-widest mt-1">{modalData.transaction.transaction_number}</p>
+                    </div>
+                    <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-rose-500 transition-colors p-2 hover:bg-rose-50 rounded-xl">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+                  
+                  <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-8">
+                    {/* Summary Info */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-slate-50 p-4 rounded-2xl">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Date</p>
+                        <p className="font-bold text-slate-900 text-sm">{new Date(modalData.transaction.created_at + ' UTC').toLocaleString()}</p>
+                      </div>
+                      <div className="bg-slate-50 p-4 rounded-2xl">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Cashier</p>
+                        <p className="font-bold text-slate-900 text-sm">{modalData.transaction.cashier_name || 'System'}</p>
+                      </div>
+                      {modalData.transaction.customer_name && (
+                        <div className="bg-slate-50 p-4 rounded-2xl col-span-2">
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Customer</p>
+                          <p className="font-bold text-slate-900 text-sm">{modalData.transaction.customer_name}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Items List */}
+                    <div className="space-y-4">
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">Purchased Items</h4>
+                      <div className="space-y-3">
+                        {modalData.items.map((item, idx) => (
+                          <div key={idx} className="flex justify-between items-center">
+                            <div>
+                              <p className="font-black text-slate-900 text-sm uppercase">{item.product_name}</p>
+                              <p className="text-[10px] font-bold text-slate-400">{item.weight_kg}kg × ₱{(item.subtotal / item.weight_kg).toFixed(2)}</p>
+                            </div>
+                            <span className="font-black text-slate-900">₱{item.subtotal.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Totals */}
+                    <div className="bg-slate-900 rounded-3xl p-6 text-white space-y-4">
+                      <div className="flex justify-between items-center text-slate-400">
+                        <span className="text-[10px] font-black uppercase tracking-widest">Subtotal</span>
+                        <span className="font-bold">₱{modalData.transaction.total_amount.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-slate-400">
+                        <span className="text-[10px] font-black uppercase tracking-widest">Received</span>
+                        <span className="font-bold">₱{modalData.transaction.payment_received.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center border-t border-white/10 pt-4">
+                        <span className="text-xs font-black uppercase tracking-widest">Total Change</span>
+                        <span className="text-2xl font-black text-emerald-400">₱{modalData.transaction.change_amount.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-8 pt-6 border-t border-slate-50 flex gap-3 shrink-0">
+                    <button 
+                      onClick={() => modalData.onDownload(modalData.transaction)}
+                      className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-600 font-black py-4 rounded-xl transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-[10px]"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                      Download PDF
+                    </button>
+                    <button 
+                      onClick={() => modalData.onReprint(modalData.transaction.id)}
+                      className="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-black py-4 rounded-xl transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-[10px]"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                      Reprint Receipt
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Add more modals here as needed (Product, Weight, Checkout) */}
+            {activeModal === 'product' && modalData && (
+              <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,0.15)] border border-slate-100 relative z-10 max-h-[90vh] flex flex-col overflow-hidden pointer-events-auto">
+                <div className="p-8 lg:p-10 overflow-y-auto custom-scrollbar">
+                  <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
+                      {modalData.editingProduct ? 'Edit Product' : 'Add New Product'}
+                    </h3>
+                    <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-rose-500 transition-colors p-2 hover:bg-rose-50 rounded-xl">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+                  
+                  <form onSubmit={modalData.onSave} className="space-y-6">
+                    {/* Photo Upload Section */}
+                    <div className="space-y-3">
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Product Photo</label>
+                      <div className="flex items-center gap-6">
+                        <div className="w-24 h-24 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
+                          {modalData.formData.image_path ? (
+                            <img src={modalData.formData.image_path} className="w-full h-full object-cover" />
+                          ) : (
+                            <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <input type="file" id="product-photo" onChange={modalData.onPhotoUpload} accept="image/*" className="hidden" />
+                          <label htmlFor="product-photo" className="inline-flex items-center gap-2 px-4 py-2 bg-brand-50 text-brand-700 text-xs font-black uppercase tracking-widest rounded-xl cursor-pointer hover:bg-brand-100 transition-colors">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                            Upload Photo
+                          </label>
+                          <p className="text-[9px] text-slate-400 font-bold uppercase mt-2">JPG, PNG up to 1MB</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Product Name</label>
+                      <input 
+                        type="text" 
+                        required
+                        autoFocus
+                        value={modalData.formData.name}
+                        onChange={e => modalData.setFormData({...modalData.formData, name: e.target.value})}
+                        className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all outline-none font-bold text-slate-900"
+                        placeholder="e.g. Copper Wire"
+                      />
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Price per kg</label>
+                      <div className="relative">
+                        <span className="absolute left-6 top-1/2 -translate-y-1/2 font-black text-slate-300">₱</span>
+                        <input 
+                          type="number" 
+                          step="0.01"
+                          required
+                          value={modalData.formData.price_per_kg}
+                          onChange={e => modalData.setFormData({...modalData.formData, price_per_kg: e.target.value})}
+                          className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all outline-none font-bold text-slate-900"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4 pt-4">
+                      <button type="button" onClick={() => setActiveModal(null)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-black py-5 rounded-2xl transition-all uppercase tracking-widest text-sm">Cancel</button>
+                      <button type="submit" disabled={modalData.loading} className="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-black py-5 rounded-2xl shadow-xl shadow-brand-100 transition-all uppercase tracking-widest text-sm">
+                        {modalData.loading ? 'Saving...' : 'Save Product'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {/* 2. Weight Input Modal */}
+            {activeModal === 'weight' && modalData && (
+              <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,0.15)] border border-slate-100 relative z-10 max-h-[90vh] flex flex-col overflow-hidden pointer-events-auto">
+                <div className="p-10 overflow-y-auto custom-scrollbar">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Enter Weight</h3>
+                    <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-rose-500 transition-colors p-2 hover:bg-rose-50 rounded-xl">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+                  <p className="text-slate-500 font-bold text-sm mb-8 uppercase tracking-widest">Item: <span className="text-brand-600">{modalData.product.name}</span></p>
+                  
+                  <div className="space-y-6">
+                    <div className="relative">
+                      <input 
+                        type="number" 
+                        autoFocus
+                        value={modalData.weight}
+                        onChange={(e) => modalData.setWeight(e.target.value)}
+                        placeholder="0.00"
+                        className="w-full px-6 py-5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all outline-none font-black text-2xl text-center"
+                      />
+                      <span className="absolute right-6 top-1/2 -translate-y-1/2 font-black text-slate-300 uppercase tracking-widest">kg</span>
+                    </div>
+
+                    <div className="flex gap-4">
+                      <button onClick={() => setActiveModal(null)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-black py-4 rounded-2xl transition-all uppercase tracking-widest">Cancel</button>
+                      <button onClick={modalData.onConfirm} className="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-brand-100 transition-all uppercase tracking-widest">Confirm</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 4. Checkout Modal */}
+            {activeModal === 'checkout' && modalData && (
+              <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,0.15)] border border-slate-100 relative z-10 max-h-[90vh] flex flex-col overflow-hidden pointer-events-auto animate-modal-in">
+                <div className="bg-slate-900 p-8 text-white shrink-0">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xl font-black uppercase tracking-tight">Confirm Payout</h3>
+                    <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-xl">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between mt-6">
+                    <span className="text-slate-400 font-bold uppercase tracking-widest text-xs">Total Payout</span>
+                    <span className="text-3xl font-black text-emerald-400">₱{modalData.totalAmount.toFixed(2)}</span>
+                  </div>
+                </div>
+                
+                <div className="p-10 space-y-8 text-center overflow-y-auto custom-scrollbar">
+                  <div className="space-y-4">
+                    <div className="w-16 h-16 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center mx-auto">
+                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                    </div>
+                    <div>
+                      <h4 className="text-xl font-black text-slate-900 uppercase tracking-tight">Payment Mode</h4>
+                      <p className="text-slate-500 font-bold text-[10px] mt-1 uppercase tracking-[0.2em]">How would you like to pay the seller?</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    <button 
+                      disabled={modalData.loading}
+                      onClick={() => modalData.onCheckout('completed')} 
+                      className="group flex flex-col items-center justify-center p-6 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white rounded-[2rem] border-2 border-emerald-100 hover:border-emerald-500 transition-all active:scale-95 shadow-lg shadow-emerald-900/5"
+                    >
+                      <span className="text-lg font-black uppercase tracking-widest">Pay Now</span>
+                      <span className="text-[10px] font-bold opacity-60 uppercase tracking-widest mt-1">Cash Payment</span>
+                    </button>
+
+                    <button 
+                      disabled={modalData.loading}
+                      onClick={() => modalData.onCheckout('unpaid')} 
+                      className="group flex flex-col items-center justify-center p-6 bg-amber-50 hover:bg-amber-500 text-amber-700 hover:text-white rounded-[2rem] border-2 border-amber-100 hover:border-amber-400 transition-all active:scale-95 shadow-lg shadow-amber-900/5"
+                    >
+                      <span className="text-lg font-black uppercase tracking-widest">Pay Later</span>
+                      <span className="text-[10px] font-bold opacity-60 uppercase tracking-widest mt-1">Record as Credit</span>
+                    </button>
+                  </div>
+
+                  <button 
+                    disabled={modalData.loading}
+                    onClick={() => setActiveModal(null)} 
+                    className="w-full py-4 text-slate-400 font-black uppercase tracking-widest text-[10px] hover:text-slate-600 transition-colors"
+                  >
+                    Cancel Transaction
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

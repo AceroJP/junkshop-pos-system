@@ -9,4 +9,5 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
+Route::get('/version', [LicenseController::class, 'version']);
 Route::post('/activate', [LicenseController::class, 'activate']);
