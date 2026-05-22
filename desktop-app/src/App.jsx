@@ -9,6 +9,7 @@ import Transactions from './pages/Transactions';
 import Settings from './pages/Settings';
 import Reports from './pages/Reports';
 import Sellers from './pages/Sellers';
+import logo from './assets/logo.png';
 
 function App() {
   const [isLicenseValid, setIsLicenseValid] = useState(null);
@@ -192,13 +193,11 @@ function App() {
       {/* Sidebar */}
       <aside className={`w-full lg:w-64 xl:w-72 bg-white border-b lg:border-b-0 lg:border-r border-slate-100 flex flex-col shrink-0 transition-all duration-300 ${activeModal ? 'blur-sm grayscale-[0.2] pointer-events-none' : ''}`}>
         <div className="h-20 lg:h-24 flex items-center px-6 lg:px-8 gap-4 border-b border-slate-50">
-          <div className="w-10 h-10 lg:w-12 lg:h-12 bg-brand-600 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-200 overflow-hidden">
+          <div className="w-10 h-10 lg:w-12 lg:h-12 bg-white border border-slate-100 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-100 overflow-hidden">
             {shopSettings.shop_logo ? (
               <img src={shopSettings.shop_logo} className="w-full h-full object-cover" />
             ) : (
-              <svg className="w-6 h-6 lg:w-7 lg:h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
+              <img src={logo} className="w-full h-full object-contain p-1" alt="Logo" />
             )}
           </div>
           <div className="min-w-0 flex-1">

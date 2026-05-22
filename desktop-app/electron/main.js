@@ -16,6 +16,7 @@ function createWindow() {
         height: 800,
         minWidth: 1000,
         minHeight: 700,
+        icon: path.join(__dirname, '../src/assets/logo.png'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: false,
@@ -488,6 +489,10 @@ ipcMain.handle('complete-setup', async (event, setupData) => {
 // Auth Handlers
 ipcMain.handle('login', async (event, { username, password }) => {
     return await auth.login(username, password);
+});
+
+ipcMain.handle('reset-password-with-master-key', async (event, data) => {
+    return await auth.resetPasswordWithMasterKey(data.masterKey, data.newPassword);
 });
 
 ipcMain.handle('logout', async () => {

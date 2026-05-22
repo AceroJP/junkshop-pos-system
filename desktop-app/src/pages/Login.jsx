@@ -1,10 +1,60 @@
 import React, { useState } from 'react';
+import logo from '../assets/logo.png';
 
 const Login = ({ onLogin, shopSettings }) => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    
+    // Recovery State
+    const [clickCount, setClickCount] = useState(0);
+    const [showRecovery, setShowRecovery] = useState(false);
+    const [masterKey, setMasterKey] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [recoveryError, setRecoveryError] = useState('');
+    const [recoverySuccess, setRecoverySuccess] = useState('');
+
+    const handleLogoClick = () => {
+        const newCount = clickCount + 1;
+        setClickCount(newCount);
+        if (newCount >= 5) {
+            setShowRecovery(true);
+            setClickCount(0);
+        }
+        // Reset count after 2 seconds of inactivity
+        setTimeout(() => setClickCount(0), 2000);
+    };
+
+    const handleRecovery = async (e) => {
+        e.preventDefault();
+        if (!masterKey || !newPassword) {
+            setRecoveryError('Please fill in all fields');
+            return;
+        }
+
+        setLoading(true);
+        setRecoveryError('');
+
+        try {
+            const result = await window.electron.resetPasswordWithMasterKey({ masterKey, newPassword });
+            if (result.success) {
+                setRecoverySuccess(result.message);
+                setTimeout(() => {
+                    setShowRecovery(false);
+                    setMasterKey('');
+                    setNewPassword('');
+                    setRecoverySuccess('');
+                }, 3000);
+            } else {
+                setRecoveryError(result.message);
+            }
+        } catch (err) {
+            setRecoveryError('An error occurred during reset');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -40,7 +90,7 @@ const Login = ({ onLogin, shopSettings }) => {
 
             <div className="bg-white w-full max-w-sm sm:max-w-md rounded-[2.5rem] sm:rounded-[3rem] shadow-[0_20px_100px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col border border-white/10 animate-fade-in relative z-10">
                 {/* Header/Logo Area */}
-                <div className="bg-brand-600 p-6 sm:p-8 lg:p-10 text-center text-white relative overflow-hidden shrink-0">
+                <div className="bg-brand-600 p-6 sm:p-8 lg:p-10 text-center text-white relative overflow-hidden shrink-0 cursor-pointer select-none" onClick={handleLogoClick}>
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
                     <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/10 rounded-full -ml-12 -mb-12 blur-2xl"></div>
                     
@@ -49,9 +99,7 @@ const Login = ({ onLogin, shopSettings }) => {
                             {shopSettings.shop_logo ? (
                                 <img src={shopSettings.shop_logo} className="w-full h-full object-cover" alt="Shop Logo" />
                             ) : (
-                                <svg className="w-6 h-6 sm:w-8 sm:h-8 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                </svg>
+                                <img src={logo} className="w-full h-full object-contain p-1" alt="Logo" />
                             )}
                         </div>
                     </div>
@@ -135,6 +183,79 @@ const Login = ({ onLogin, shopSettings }) => {
                     </div>
                 </div>
             </div>
+
+            {/* Admin Recovery Modal */}
+            {showRecovery && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => !loading && setShowRecovery(false)}></div>
+                    <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden animate-in zoom-in duration-300">
+                        <div className="bg-slate-900 p-8 text-white text-center relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-brand-500/20 rounded-full -mr-12 -mt-12 blur-2xl"></div>
+                            <h3 className="text-xl font-black uppercase tracking-tight relative z-10">Admin Recovery</h3>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1 relative z-10">System Password Reset</p>
+                        </div>
+                        
+                        <div className="p-8">
+                            {recoverySuccess ? (
+                                <div className="py-8 text-center space-y-4 animate-in fade-in zoom-in duration-500">
+                                    <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </div>
+                                    <p className="text-slate-900 font-black uppercase tracking-tight text-lg">{recoverySuccess}</p>
+                                    <p className="text-slate-500 font-bold text-xs uppercase tracking-widest">You can now sign in with your new password.</p>
+                                </div>
+                            ) : (
+                                <form onSubmit={handleRecovery} className="space-y-6">
+                                    <div className="space-y-2">
+                                        <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Master Recovery Key</label>
+                                        <input 
+                                            type="text"
+                                            value={masterKey}
+                                            onChange={(e) => setMasterKey(e.target.value)}
+                                            placeholder="XXXX-XXXX-XXXX"
+                                            className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl focus:bg-white focus:ring-8 focus:ring-brand-500/5 focus:border-brand-500 transition-all outline-none font-black text-slate-900 placeholder:text-slate-300 text-sm tracking-widest text-center"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">New Admin Password</label>
+                                        <input 
+                                            type="password"
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                            placeholder="••••••••"
+                                            className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl focus:bg-white focus:ring-8 focus:ring-brand-500/5 focus:border-brand-500 transition-all outline-none font-bold text-slate-900 placeholder:text-slate-300 text-sm"
+                                        />
+                                    </div>
+
+                                    {recoveryError && (
+                                        <p className="text-rose-500 text-[10px] font-black uppercase tracking-widest text-center animate-shake">{recoveryError}</p>
+                                    )}
+
+                                    <div className="flex gap-3">
+                                        <button 
+                                            type="button"
+                                            onClick={() => setShowRecovery(false)}
+                                            className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-black py-4 rounded-xl transition-all uppercase tracking-widest text-xs"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button 
+                                            type="submit"
+                                            disabled={loading}
+                                            className="flex-1 bg-slate-900 hover:bg-black text-white font-black py-4 rounded-xl transition-all uppercase tracking-widest text-xs shadow-lg"
+                                        >
+                                            {loading ? 'Processing...' : 'Reset Password'}
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

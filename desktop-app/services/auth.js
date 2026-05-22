@@ -48,8 +48,39 @@ const logout = () => {
  */
 const getCurrentUser = () => currentUser;
 
+/**
+ * Reset admin password using master recovery key
+ */
+const resetPasswordWithMasterKey = async (masterKey, newPassword) => {
+    try {
+        // 1. Validate master key
+        // Check local settings first, then fallback to hardcoded
+        const storedKey = await db.get("SELECT value FROM settings WHERE key = 'master_recovery_key'");
+        const validKey = storedKey ? storedKey.value : 'JUNK-ADMIN-RESET-99';
+
+        if (masterKey !== validKey) {
+            return { success: false, message: 'Invalid Master Recovery Key' };
+        }
+
+        // 2. Hash new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // 3. Update admin user (there should only be one admin in this system usually)
+        await db.run(
+            "UPDATE users SET password = ? WHERE role = 'admin'",
+            [hashedPassword]
+        );
+
+        return { success: true, message: 'Admin password has been reset successfully' };
+    } catch (err) {
+        console.error('Password reset error', err);
+        return { success: false, message: 'Failed to reset password' };
+    }
+};
+
 module.exports = {
     login,
     logout,
-    getCurrentUser
+    getCurrentUser,
+    resetPasswordWithMasterKey
 };

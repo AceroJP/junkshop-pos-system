@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Junkshop POS System | Smart Offline POS for Recycling Businesses</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{{ asset('assets/logo.png') }}?v={{ time() }}">
+    <link rel="apple-touch-icon" href="{{ asset('assets/logo.png') }}?v={{ time() }}">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -64,8 +69,8 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16 md:h-20">
                 <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 md:w-10 md:h-10 bg-brand-600 rounded-lg md:rounded-xl flex items-center justify-center shadow-lg shadow-brand-200">
-                        <svg class="w-5 h-5 md:w-6 md:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    <div class="w-10 h-10 md:w-12 md:h-12 bg-white rounded-lg md:rounded-xl flex items-center justify-center shadow-lg shadow-brand-100 overflow-hidden border border-slate-100">
+                        <img src="{{ asset('assets/logo.png') }}" class="w-full h-full object-contain p-1" alt="Junkshop POS Logo">
                     </div>
                     <span class="text-lg md:text-xl font-extrabold tracking-tight text-slate-900">JUNKSHOP <span class="text-brand-600">POS</span></span>
                 </div>
@@ -506,8 +511,8 @@
             <div class="grid md:grid-cols-4 gap-12 mb-20">
                 <div class="col-span-1 md:col-span-1">
                     <div class="flex items-center gap-2 mb-6">
-                        <div class="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center">
-                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        <div class="w-10 h-10 bg-white border border-slate-100 rounded-lg flex items-center justify-center shadow-sm overflow-hidden">
+                            <img src="{{ asset('assets/logo.png') }}" class="w-full h-full object-contain p-1" alt="Logo">
                         </div>
                         <span class="text-lg font-black tracking-tight text-slate-900 uppercase">JUNKSHOP <span class="text-brand-600">POS</span></span>
                     </div>

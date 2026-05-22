@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('electron', {
 
     // Auth
     login: (credentials) => ipcRenderer.invoke('login', credentials),
+    resetPasswordWithMasterKey: (data) => ipcRenderer.invoke('reset-password-with-master-key', data),
     logout: () => ipcRenderer.invoke('logout'),
 
     // Products

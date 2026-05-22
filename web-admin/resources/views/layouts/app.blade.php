@@ -5,6 +5,10 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
+        <!-- Favicon -->
+        <link rel="icon" type="image/png" href="{{ asset('assets/logo.png') }}?v={{ time() }}">
+        <link rel="apple-touch-icon" href="{{ asset('assets/logo.png') }}?v={{ time() }}">
+
         <title>{{ config('app.name', 'Laravel') }}</title>
 
         <!-- Fonts -->

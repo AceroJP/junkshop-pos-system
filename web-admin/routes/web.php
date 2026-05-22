@@ -48,6 +48,7 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
     Route::middleware(['super_admin'])->group(function () {
         Route::get('/master-licenses', [App\Http\Controllers\Admin\MasterLicenseController::class, 'index'])->name('master-licenses.index');
         Route::post('/master-licenses', [App\Http\Controllers\Admin\MasterLicenseController::class, 'store'])->name('master-licenses.store');
+        Route::post('/master-licenses/recovery-key', [App\Http\Controllers\Admin\MasterLicenseController::class, 'updateRecoveryKey'])->name('master-licenses.recovery-key');
         Route::post('/master-licenses/{license}/toggle', [App\Http\Controllers\Admin\MasterLicenseController::class, 'toggle'])->name('master-licenses.toggle');
         Route::delete('/master-licenses/{license}', [App\Http\Controllers\Admin\MasterLicenseController::class, 'destroy'])->name('master-licenses.destroy');
     });
@@ -57,7 +58,8 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
 
     // System Settings
     Route::get('/settings', [App\Http\Controllers\Admin\SettingController::class, 'index'])->name('settings.index');
-    Route::post('/settings', [App\Http\Controllers\Admin\SettingController::class, 'update'])->name('settings.update');
+    Route::post('/settings/update', [App\Http\Controllers\Admin\SettingController::class, 'update'])->name('settings.update');
+    Route::post('/verify-password', [App\Http\Controllers\Admin\SettingController::class, 'verifyPassword'])->name('verify-password');
 });
 
 Route::middleware('auth')->group(function () {

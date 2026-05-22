@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\MasterLicense;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
@@ -13,7 +14,19 @@ class MasterLicenseController extends Controller
     public function index()
     {
         $licenses = MasterLicense::with('creator')->latest()->paginate(15);
-        return view('admin.master-licenses.index', compact('licenses'));
+        $recoveryKey = Setting::get('master_recovery_key', 'JUNK-ADMIN-RESET-99');
+        return view('admin.master-licenses.index', compact('licenses', 'recoveryKey'));
+    }
+
+    public function updateRecoveryKey(Request $request)
+    {
+        $request->validate([
+            'recovery_key' => 'required|string|min:8|max:50',
+        ]);
+
+        Setting::set('master_recovery_key', $request->recovery_key, 'security');
+
+        return back()->with('status', 'Master Recovery Key updated successfully.');
     }
 
     public function store(Request $request)

@@ -7,6 +7,10 @@
 
         <title>{{ config('app.name', 'Junkshop POS') }}</title>
 
+        <!-- Favicon -->
+        <link rel="icon" type="image/png" href="{{ asset('assets/logo.png') }}?v={{ time() }}">
+        <link rel="apple-touch-icon" href="{{ asset('assets/logo.png') }}?v={{ time() }}">
+
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -51,10 +55,8 @@
                 <!-- Logo Area -->
                 <div class="flex flex-col items-center mb-10">
                     <a href="/" class="group transition-transform hover:scale-105 duration-300">
-                        <div class="w-16 h-16 bg-brand-600 rounded-2xl flex items-center justify-center shadow-xl shadow-brand-200">
-                            <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                            </svg>
+                        <div class="w-20 h-20 bg-white rounded-2xl flex items-center justify-center shadow-xl shadow-brand-100 overflow-hidden border border-slate-100">
+                            <img src="{{ asset('assets/logo.png') }}" class="w-full h-full object-contain p-2" alt="Logo">
                         </div>
                     </a>
                     <h2 class="mt-6 text-2xl font-black tracking-tight text-slate-900 uppercase">

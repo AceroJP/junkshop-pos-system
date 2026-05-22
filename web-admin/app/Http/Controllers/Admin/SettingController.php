@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 
 class SettingController extends Controller
 {
@@ -12,6 +14,19 @@ class SettingController extends Controller
     {
         $settings = Setting::all()->pluck('value', 'key');
         return view('admin.settings.index', compact('settings'));
+    }
+
+    public function verifyPassword(Request $request)
+    {
+        $request->validate([
+            'password' => 'required|string',
+        ]);
+
+        if (Hash::check($request->password, Auth::user()->password)) {
+            return response()->json(['success' => true]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Incorrect password.'], 422);
     }
 
     public function update(Request $request)
@@ -23,6 +38,7 @@ class SettingController extends Controller
             'support_email' => 'required|email',
             'app_version' => 'required|string',
             'installer_download_link' => 'nullable|string',
+            'master_recovery_key' => 'required|string|min:8|max:50',
             
             // Product Showcase Settings (JSON Array)
             'showcase_items' => 'nullable|array',
