@@ -10,4 +10,5 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 Route::get('/version', [LicenseController::class, 'version']);
+Route::post('/validate-master-key', [LicenseController::class, 'validateMasterKey']);
 Route::post('/activate', [LicenseController::class, 'activate']);

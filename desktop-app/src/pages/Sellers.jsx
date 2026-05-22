@@ -254,13 +254,13 @@ const Sellers = ({ openModal }) => {
                     </div>
 
                     <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
+                        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+                            <table className="w-full text-left min-w-[500px] lg:min-w-full">
                                 <thead>
                                     <tr className="bg-slate-50 border-b border-slate-100">
                                         <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Seller Name</th>
                                         <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Balance Owed</th>
-                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                                        <th className="sticky right-0 bg-slate-50 lg:bg-transparent px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right shadow-[-12px_0_15px_-3px_rgba(0,0,0,0.02)] lg:shadow-none">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
@@ -284,7 +284,7 @@ const Sellers = ({ openModal }) => {
                                                         ₱{seller.total_balance_owed.toFixed(2)}
                                                     </span>
                                                 </td>
-                                                <td className="px-8 py-5 text-right">
+                                                <td className="sticky right-0 bg-white group-hover:bg-slate-50/50 group-[.bg-brand-50\/50]:bg-brand-50/50 px-8 py-5 text-right shadow-[-12px_0_15px_-3px_rgba(0,0,0,0.02)] lg:shadow-none transition-colors">
                                                     <div className="flex items-center justify-end gap-2 transition-opacity">
                                                         <button 
                                                             onClick={(e) => { e.stopPropagation(); handleRecordPayment(seller); }}
@@ -292,7 +292,7 @@ const Sellers = ({ openModal }) => {
                                                             title="Record Payment"
                                                         >
                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                                                            <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap">Pay</span>
+                                                            <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap hidden sm:inline">Pay</span>
                                                         </button>
                                                         <button 
                                                             onClick={(e) => { e.stopPropagation(); handleUpdateInfo(seller); }}
@@ -300,7 +300,7 @@ const Sellers = ({ openModal }) => {
                                                             title="Edit Info"
                                                         >
                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                                            <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap">Edit</span>
+                                                            <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap hidden sm:inline">Edit</span>
                                                         </button>
                                                     </div>
                                                 </td>

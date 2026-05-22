@@ -206,16 +206,16 @@ const Transactions = ({ shopSettings, openModal }) => {
 
             {/* Transactions Table */}
             <div className="bg-white rounded-[2rem] lg:rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full min-w-[1000px]">
+                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+                    <table className="w-full min-w-[1100px]">
                         <thead className="bg-slate-50/50 border-b border-slate-100">
                             <tr>
-                                <th className="px-6 lg:px-8 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Transaction ID</th>
-                                <th className="px-6 lg:px-8 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Date & Time</th>
-                                <th className="px-6 lg:px-8 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Customer</th>
-                                <th className="px-6 lg:px-8 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Status</th>
-                                <th className="px-6 lg:px-8 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Total Amount</th>
-                                <th className="px-6 lg:px-8 py-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Actions</th>
+                                <th className="px-4 lg:px-8 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-[180px]">Transaction ID</th>
+                                <th className="px-4 lg:px-8 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-[200px]">Date & Time</th>
+                                <th className="px-4 lg:px-8 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-[180px]">Customer</th>
+                                <th className="px-4 lg:px-8 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-[120px]">Status</th>
+                                <th className="px-4 lg:px-8 py-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-[160px]">Total Amount</th>
+                                <th className="sticky right-0 bg-slate-50 lg:bg-transparent px-4 lg:px-8 py-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] shadow-[-12px_0_15px_-3px_rgba(0,0,0,0.02)] lg:shadow-none w-[260px]">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
@@ -237,36 +237,39 @@ const Transactions = ({ shopSettings, openModal }) => {
                             ) : (
                                 currentTransactions.map(t => (
                                     <tr key={t.id} className="hover:bg-slate-50/50 transition-colors group">
-                                        <td className="px-6 lg:px-8 py-6">
-                                            <span className="font-black text-slate-900 uppercase tracking-tight text-sm">{t.transaction_number}</span>
-                                        </td>
-                                        <td className="px-6 lg:px-8 py-6">
+                                        <td className="px-4 lg:px-8 py-6">
                                             <div className="flex flex-col">
-                                                <span className="font-bold text-slate-700 text-sm">{new Date(t.created_at + ' UTC').toLocaleDateString()}</span>
-                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(t.created_at + ' UTC').toLocaleTimeString()}</span>
+                                                <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest leading-none mb-1">ID</span>
+                                                <span className="font-black text-slate-900 uppercase tracking-tight text-xs lg:text-sm">{t.transaction_number.replace('TXN-', '')}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-4 lg:px-8 py-6">
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="font-bold text-slate-700 text-xs lg:text-sm">{new Date(t.created_at + ' UTC').toLocaleDateString()}</span>
+                                                <span className="text-[9px] lg:text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(t.created_at + ' UTC').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                 {t.status === 'completed' && t.paid_at && (
-                                                    <div className="mt-1 pt-1 border-t border-slate-100">
-                                                        <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest block">Paid At:</span>
-                                                        <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-tight">
-                                                            {new Date(t.paid_at + ' UTC').toLocaleDateString()} {new Date(t.paid_at + ' UTC').toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                    <div className="mt-1 flex items-center gap-1 whitespace-nowrap">
+                                                        <span className="text-[7px] lg:text-[8px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-50 px-1 py-0.5 rounded">Paid</span>
+                                                        <span className="text-[8px] lg:text-[9px] font-bold text-emerald-600 uppercase tracking-tight">
+                                                            {new Date(t.paid_at + ' UTC').toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                                         </span>
                                                     </div>
                                                 )}
                                                 {t.status === 'partial' && t.paid_at && (
-                                                    <div className="mt-1 pt-1 border-t border-slate-100">
-                                                        <span className="text-[8px] font-black text-amber-500 uppercase tracking-widest block">Last Pay:</span>
-                                                        <span className="text-[9px] font-bold text-amber-600 uppercase tracking-tight">
-                                                            {new Date(t.paid_at + ' UTC').toLocaleDateString()} {new Date(t.paid_at + ' UTC').toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                    <div className="mt-1 flex items-center gap-1 whitespace-nowrap">
+                                                        <span className="text-[7px] lg:text-[8px] font-black text-amber-500 uppercase tracking-widest bg-amber-50 px-1 py-0.5 rounded">Part</span>
+                                                        <span className="text-[8px] lg:text-[9px] font-bold text-amber-600 uppercase tracking-tight">
+                                                            {new Date(t.paid_at + ' UTC').toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                                         </span>
                                                     </div>
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="px-6 lg:px-8 py-6">
-                                            <span className="font-bold text-slate-600 text-sm">{t.customer_name || 'Walk-in'}</span>
+                                        <td className="px-4 lg:px-8 py-6">
+                                            <span className="font-bold text-slate-600 text-xs lg:text-sm">{t.customer_name || 'Walk-in'}</span>
                                         </td>
-                                        <td className="px-6 lg:px-8 py-6">
-                                            <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest w-fit ${
+                                        <td className="px-4 lg:px-8 py-6">
+                                            <span className={`text-[9px] lg:text-[10px] font-black px-2.5 lg:px-3 py-1 rounded-full uppercase tracking-widest w-fit ${
                                                 t.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 
                                                 t.status === 'unpaid' ? 'bg-rose-50 text-rose-600' : 
                                                 t.status === 'partial' ? 'bg-amber-50 text-amber-600' :
@@ -277,35 +280,35 @@ const Transactions = ({ shopSettings, openModal }) => {
                                                  'Partial'}
                                             </span>
                                         </td>
-                                        <td className="px-6 lg:px-8 py-6">
-                                            <span className="font-black text-brand-600 text-lg">₱{t.total_amount.toFixed(2)}</span>
+                                        <td className="px-4 lg:px-8 py-6 text-right">
+                                            <span className="font-black text-brand-600 text-base lg:text-lg whitespace-nowrap">₱{t.total_amount.toFixed(2)}</span>
                                         </td>
-                                        <td className="px-6 lg:px-8 py-6 text-right">
-                                            <div className="flex items-center justify-end gap-2">
+                                        <td className="sticky right-0 bg-white group-hover:bg-slate-50/50 px-4 lg:px-8 py-6 text-right shadow-[-12px_0_15px_-3px_rgba(0,0,0,0.02)] lg:shadow-none transition-colors">
+                                            <div className="flex items-center justify-end gap-1.5 lg:gap-2">
                                                 <button 
                                                     onClick={() => viewDetails(t)}
-                                                    className="flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-500 rounded-xl hover:bg-brand-50 hover:text-brand-600 transition-all active:scale-95 whitespace-nowrap"
+                                                    className="flex items-center gap-1.5 px-2.5 lg:px-3 py-2 bg-slate-100 text-slate-500 rounded-xl hover:bg-brand-50 hover:text-brand-600 transition-all active:scale-95 whitespace-nowrap"
                                                     title="View Details"
                                                 >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                                    <span className="text-[10px] font-black uppercase tracking-widest">View</span>
+                                                    <svg className="w-3.5 h-3.5 lg:w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                                    <span className="text-[9px] lg:text-[10px] font-black uppercase tracking-widest hidden sm:inline">View</span>
                                                 </button>
                                                 <button 
                                                     disabled={downloading}
                                                     onClick={() => handleDownloadPDF(t)}
-                                                    className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all active:scale-95 whitespace-nowrap"
+                                                    className="flex items-center gap-1.5 px-2.5 lg:px-3 py-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all active:scale-95 whitespace-nowrap"
                                                     title="Download PDF"
                                                 >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                                                    <span className="text-[10px] font-black uppercase tracking-widest">PDF</span>
+                                                    <svg className="w-3.5 h-3.5 lg:w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                                    <span className="text-[9px] lg:text-[10px] font-black uppercase tracking-widest hidden sm:inline">PDF</span>
                                                 </button>
                                                 <button 
                                                     onClick={() => handleReprint(t.id)}
-                                                    className="flex items-center gap-2 px-3 py-2 bg-brand-50 text-brand-600 rounded-xl hover:bg-brand-600 hover:text-white transition-all active:scale-95 whitespace-nowrap"
+                                                    className="flex items-center gap-1.5 px-2.5 lg:px-3 py-2 bg-brand-50 text-brand-600 rounded-xl hover:bg-brand-600 hover:text-white transition-all active:scale-95 whitespace-nowrap"
                                                     title="Reprint Receipt"
                                                 >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                                                    <span className="text-[10px] font-black uppercase tracking-widest">Print</span>
+                                                    <svg className="w-3.5 h-3.5 lg:w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                                    <span className="text-[9px] lg:text-[10px] font-black uppercase tracking-widest hidden sm:inline">Print</span>
                                                 </button>
                                             </div>
                                         </td>

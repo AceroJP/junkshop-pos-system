@@ -208,14 +208,14 @@ const Products = ({ openModal }) => {
 
             {/* Inventory Table */}
             <div className="bg-white rounded-[2rem] lg:rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
                     <table className="w-full min-w-[800px] lg:min-w-full">
                         <thead className="bg-slate-50/50 border-b border-slate-100">
                             <tr>
                                 <th className="px-6 lg:px-10 py-4 lg:py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Item Details</th>
                                 <th className="px-6 lg:px-10 py-4 lg:py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Price / kg</th>
                                 <th className="px-6 lg:px-10 py-4 lg:py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Status</th>
-                                <th className="px-6 lg:px-10 py-4 lg:py-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Management</th>
+                                <th className="sticky right-0 bg-slate-50 lg:bg-transparent px-6 lg:px-10 py-4 lg:py-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] shadow-[-12px_0_15px_-3px_rgba(0,0,0,0.02)] lg:shadow-none">Management</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
@@ -251,7 +251,7 @@ const Products = ({ openModal }) => {
                                                 {product.is_active ? 'Active' : 'Inactive'}
                                             </span>
                                         </td>
-                                        <td className="px-6 lg:px-10 py-4 lg:py-6 text-right">
+                                        <td className="sticky right-0 bg-white group-hover:bg-slate-50/50 px-6 lg:px-10 py-4 lg:py-6 text-right shadow-[-12px_0_15px_-3px_rgba(0,0,0,0.02)] lg:shadow-none transition-colors">
                                             <div className="flex items-center justify-end gap-2 lg:gap-3 transition-opacity">
                                                 <button 
                                                     onClick={() => handleEdit(product)}
@@ -259,7 +259,7 @@ const Products = ({ openModal }) => {
                                                     title="Edit Product"
                                                 >
                                                     <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                                    <span className="text-[10px] font-black uppercase tracking-widest">Edit</span>
+                                                    <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Edit</span>
                                                 </button>
                                                 <button 
                                                     onClick={() => toggleStatus(product.id)} 
@@ -267,7 +267,7 @@ const Products = ({ openModal }) => {
                                                     className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all active:scale-95 whitespace-nowrap ${product.is_active ? 'bg-emerald-50 text-emerald-400 hover:bg-emerald-500 hover:text-white' : 'bg-amber-50 text-amber-400 hover:bg-amber-500 hover:text-white'}`}
                                                 >
                                                     <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
-                                                    <span className="text-[10px] font-black uppercase tracking-widest">{product.is_active ? 'Active' : 'Inactive'}</span>
+                                                    <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">{product.is_active ? 'Active' : 'Inactive'}</span>
                                                 </button>
                                                 <button 
                                                     onClick={() => handleDelete(product.id)}
@@ -275,7 +275,7 @@ const Products = ({ openModal }) => {
                                                     title="Delete Product"
                                                 >
                                                     <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                    <span className="text-[10px] font-black uppercase tracking-widest">Delete</span>
+                                                    <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Delete</span>
                                                 </button>
                                             </div>
                                         </td>

@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -34,6 +35,7 @@
         }
     </script>
     <style>
+        [x-cloak] { display: none !important; }
         .glass-card {
             background: rgba(255, 255, 255, 0.8);
             backdrop-filter: blur(12px);
@@ -44,7 +46,18 @@
         }
     </style>
 </head>
-<body class="bg-white text-slate-900 font-sans antialiased">
+<body class="bg-white text-slate-900 font-sans antialiased selection:bg-brand-500 selection:text-white" 
+    :class="{ 'overflow-hidden': showModal }"
+    x-data="{ 
+    showModal: false, 
+    modalImage: '', 
+    modalTitle: '',
+    openImage(src, title) {
+        this.modalImage = src;
+        this.modalTitle = title;
+        this.showModal = true;
+    }
+}">
 
     <!-- NAVIGATION -->
     <nav class="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
@@ -311,82 +324,58 @@
                 <h2 class="text-brand-600 font-extrabold text-sm tracking-[0.2em] uppercase mb-4">Product Showcase</h2>
                 <p class="text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight">Designed for Recycling Businesses</p>
             </div>
-            <div class="grid lg:grid-cols-3 gap-10">
-                <!-- UI Card 1 -->
-                <div class="group">
-                    <div class="bg-slate-900 rounded-[2.5rem] p-3 shadow-2xl transition-all duration-500 group-hover:-translate-y-4">
-                        <div class="bg-slate-800 rounded-[2rem] overflow-hidden aspect-video border border-slate-700 flex flex-col">
-                            <div class="h-6 bg-slate-900 px-3 flex items-center gap-1.5">
-                                <div class="w-1.5 h-1.5 rounded-full bg-rose-500"></div>
-                                <div class="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
-                                <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                            </div>
-                            <div class="flex-1 p-4">
-                                <div class="grid grid-cols-2 gap-3 mb-4">
-                                    <div class="h-16 bg-slate-700/50 rounded-lg"></div>
-                                    <div class="h-16 bg-slate-700/50 rounded-lg"></div>
+            
+            @php
+                $showcaseItems = json_decode($settings['showcase_items'] ?? '[]', true);
+                if (empty($showcaseItems)) {
+                    $showcaseItems = [
+                        ['title' => 'Sales / POS Screen', 'desc' => 'Easy transaction with weight-based pricing.'],
+                        ['title' => 'Inventory Management', 'desc' => 'Manage junk items with images and pricing.'],
+                        ['title' => 'Reports & Analytics', 'desc' => 'Detailed reports to track your business growth.']
+                    ];
+                }
+            @endphp
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
+                @foreach($showcaseItems as $item)
+                    <div class="group cursor-pointer" @click="openImage('{{ asset($item['image_path'] ?? 'assets/placeholder.png') }}', '{{ $item['title'] }}')">
+                        <div class="rounded-[2.5rem] overflow-hidden shadow-2xl transition-all duration-500 hover:shadow-brand-200/50 group-hover:-translate-y-2">
+                            <div class="bg-slate-800 aspect-video flex flex-col relative overflow-hidden">
+                                @if(isset($item['image_path']))
+                                    <img src="{{ asset($item['image_path']) }}" alt="{{ $item['title'] }}" 
+                                        class="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110">
+                                @else
+                                    <div class="h-6 bg-slate-900 px-3 flex items-center gap-1.5 shrink-0 z-10">
+                                        <div class="w-1.5 h-1.5 rounded-full bg-rose-500"></div>
+                                        <div class="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
+                                        <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                                    </div>
+                                    <div class="flex-1 p-4 overflow-hidden opacity-40 transition-transform duration-700 group-hover:scale-110">
+                                        <div class="grid grid-cols-2 gap-3 mb-4">
+                                            <div class="h-16 bg-slate-700/50 rounded-lg"></div>
+                                            <div class="h-16 bg-slate-700/50 rounded-lg"></div>
+                                        </div>
+                                        <div class="h-24 bg-slate-700/50 rounded-lg"></div>
+                                    </div>
+                                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                                        <svg class="w-12 h-12 text-slate-700/30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                    </div>
+                                @endif
+                                
+                                <!-- Overlay on hover -->
+                                <div class="absolute inset-0 bg-brand-900/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-center justify-center">
+                                    <div class="bg-white/90 backdrop-blur-sm p-3 rounded-2xl scale-50 group-hover:scale-100 transition-transform duration-500 shadow-xl">
+                                        <svg class="w-6 h-6 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
+                                    </div>
                                 </div>
-                                <div class="h-24 bg-slate-700/50 rounded-lg"></div>
                             </div>
                         </div>
-                    </div>
-                    <div class="mt-8 text-center">
-                        <h4 class="text-xl font-extrabold text-slate-900 mb-2">Sales / POS Screen</h4>
-                        <p class="text-slate-500 font-medium">Easy transaction with weight-based pricing.</p>
-                    </div>
-                </div>
-                <!-- UI Card 2 -->
-                <div class="group">
-                    <div class="bg-slate-900 rounded-[2.5rem] p-3 shadow-2xl transition-all duration-500 group-hover:-translate-y-4">
-                        <div class="bg-slate-800 rounded-[2rem] overflow-hidden aspect-video border border-slate-700 flex flex-col">
-                            <div class="h-6 bg-slate-900 px-3 flex items-center gap-1.5">
-                                <div class="w-1.5 h-1.5 rounded-full bg-rose-500"></div>
-                                <div class="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
-                                <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                            </div>
-                            <div class="flex-1 p-4">
-                                <div class="grid grid-cols-4 gap-2">
-                                    <div class="aspect-square bg-slate-700/50 rounded-lg"></div>
-                                    <div class="aspect-square bg-slate-700/50 rounded-lg"></div>
-                                    <div class="aspect-square bg-slate-700/50 rounded-lg"></div>
-                                    <div class="aspect-square bg-slate-700/50 rounded-lg"></div>
-                                    <div class="aspect-square bg-slate-700/50 rounded-lg"></div>
-                                    <div class="aspect-square bg-slate-700/50 rounded-lg"></div>
-                                    <div class="aspect-square bg-slate-700/50 rounded-lg"></div>
-                                    <div class="aspect-square bg-slate-700/50 rounded-lg"></div>
-                                </div>
-                            </div>
+                        <div class="mt-8 text-center px-4">
+                            <h4 class="text-xl font-extrabold text-slate-900 mb-2 uppercase tracking-tight">{{ $item['title'] }}</h4>
+                            <p class="text-slate-500 font-medium leading-relaxed">{{ $item['desc'] }}</p>
                         </div>
                     </div>
-                    <div class="mt-8 text-center">
-                        <h4 class="text-xl font-extrabold text-slate-900 mb-2">Inventory Management</h4>
-                        <p class="text-slate-500 font-medium">Manage junk items with images and pricing.</p>
-                    </div>
-                </div>
-                <!-- UI Card 3 -->
-                <div class="group">
-                    <div class="bg-slate-900 rounded-[2.5rem] p-3 shadow-2xl transition-all duration-500 group-hover:-translate-y-4">
-                        <div class="bg-slate-800 rounded-[2rem] overflow-hidden aspect-video border border-slate-700 flex flex-col">
-                            <div class="h-6 bg-slate-900 px-3 flex items-center gap-1.5">
-                                <div class="w-1.5 h-1.5 rounded-full bg-rose-500"></div>
-                                <div class="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
-                                <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                            </div>
-                            <div class="flex-1 p-4 flex flex-col gap-3">
-                                <div class="h-10 w-1/2 bg-slate-700/50 rounded-lg"></div>
-                                <div class="flex-1 flex gap-2">
-                                    <div class="flex-1 bg-slate-700/50 rounded-lg"></div>
-                                    <div class="w-12 bg-slate-700/50 rounded-lg"></div>
-                                </div>
-                                <div class="h-12 bg-slate-700/50 rounded-lg"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mt-8 text-center">
-                        <h4 class="text-xl font-extrabold text-slate-900 mb-2">Reports & Analytics</h4>
-                        <p class="text-slate-500 font-medium">Detailed reports to track your business growth.</p>
-                    </div>
-                </div>
+                @endforeach
             </div>
         </div>
     </section>
@@ -480,6 +469,36 @@
             </div>
         </div>
     </section>
+
+    <!-- IMAGE MODAL -->
+    <div x-show="showModal" 
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-[100] flex items-center justify-center p-4 lg:p-12 bg-slate-900/90 backdrop-blur-md"
+        @keydown.escape.window="showModal = false"
+        x-cloak>
+        
+        <!-- Close Button -->
+        <button @click="showModal = false" class="absolute top-6 right-6 text-white/50 hover:text-white transition-colors z-[110]">
+            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+
+        <div class="relative max-w-7xl w-full flex flex-col items-center justify-center" @click.away="showModal = false">
+            <!-- Modal Content -->
+            <div x-show="showModal"
+                x-transition:enter="transition ease-out duration-500 delay-100"
+                x-transition:enter-start="opacity-0 scale-90 translate-y-8"
+                x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                class="rounded-[1.5rem] lg:rounded-[2.5rem] overflow-hidden shadow-2xl">
+                
+                <img :src="modalImage" :alt="modalTitle" class="max-w-full max-h-[85vh] block object-contain">
+            </div>
+        </div>
+    </div>
 
     <!-- FOOTER SECTION -->
     <footer class="bg-white border-t border-slate-100 pt-20 pb-10">

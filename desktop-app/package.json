@@ -1,6 +1,6 @@
 {
   "name": "junkshop-pos",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Offline-first POS system for junkshops",
   "main": "electron/main.js",
   "scripts": {
@@ -8,7 +8,7 @@
     "electron:dev": "wait-on http://localhost:3001 && electron .",
     "dev": "concurrently \"npm run vite:dev\" \"npm run electron:dev\"",
     "build": "vite build",
-    "dist:win": "vite build && electron-builder --win",
+    "dist:win": "node sync-version.js && vite build && electron-builder --win",
     "preview": "vite preview"
   },
   "build": {
@@ -62,8 +62,7 @@
     "react-dom": "^19.2.6",
     "recharts": "^3.8.1",
     "sqlite3": "^6.0.1",
-    "sweetalert2": "^11.26.24",
-    "xlsx": "^0.18.5"
+    "sweetalert2": "^11.26.24"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.0",

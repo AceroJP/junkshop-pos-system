@@ -74,7 +74,8 @@ function initializeDatabase() {
                     notes TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY(seller_id) REFERENCES sellers(id)
-                )`
+                )`,
+                "ALTER TABLE license ADD COLUMN is_master INTEGER DEFAULT 0"
             ];
 
             migrations.forEach(sql => {

@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld('electron', {
     savePDF: (data) => ipcRenderer.invoke('save-pdf', data),
     saveExcel: (data) => ipcRenderer.invoke('save-excel', data),
     getReportStats: (params) => ipcRenderer.invoke('get-report-stats', params),
+    openExternal: (url) => ipcRenderer.invoke('open-external', url),
 
     // Sellers & Credit
     getSellers: (params) => ipcRenderer.invoke('get-sellers', params),

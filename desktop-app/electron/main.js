@@ -58,6 +58,12 @@ ipcMain.handle('get-app-version', async () => {
     return app.getVersion();
 });
 
+ipcMain.handle('open-external', async (event, url) => {
+    const { shell } = require('electron');
+    await shell.openExternal(url);
+    return { success: true };
+});
+
 // Product Handlers
 ipcMain.handle('get-products', async () => {
     return await db.all('SELECT * FROM products ORDER BY is_active DESC, name ASC');
@@ -381,24 +387,6 @@ ipcMain.handle('save-pdf', async (event, { filename, base64Data }) => {
         title: 'Save Receipt PDF',
         defaultPath: filename,
         filters: [{ name: 'PDF Files', extensions: ['pdf'] }]
-    });
-
-    if (filePath) {
-        const buffer = Buffer.from(base64Data, 'base64');
-        fs.writeFileSync(filePath, buffer);
-        return { success: true, filePath };
-    }
-    return { success: false };
-});
-
-ipcMain.handle('save-excel', async (event, { filename, base64Data }) => {
-    const { dialog } = require('electron');
-    const fs = require('fs');
-    
-    const { filePath } = await dialog.showSaveDialog(mainWindow, {
-        title: 'Export Report to Excel',
-        defaultPath: filename,
-        filters: [{ name: 'Excel Files', extensions: ['xlsx'] }]
     });
 
     if (filePath) {

@@ -1,23 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
-import * as XLSX from 'xlsx';
 import { 
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
     PieChart, Pie, Cell, Legend 
 } from 'recharts';
+import { generateReportPDF } from '../utils/pdfGenerator';
 
-const Reports = () => {
+const Reports = ({ shopSettings }) => {
     const [period, setPeriod] = useState('overall');
     const [stats, setStats] = useState({ totalPurchases: 0, salesByProduct: [], transactions: [] });
     const [loading, setLoading] = useState(true);
     const [isMounted, setIsMounted] = useState(false);
+    const [showExportDropdown, setShowExportDropdown] = useState(false);
 
     const COLORS = ['#0ea5e9', '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b', '#10b981'];
 
     useEffect(() => {
         setIsMounted(true);
         loadStats();
-    }, [period]);
+
+        // Close dropdown when clicking outside
+        const handleClickOutside = (event) => {
+            if (showExportDropdown && !event.target.closest('.export-dropdown-container')) {
+                setShowExportDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [period, showExportDropdown]);
 
     const loadStats = async () => {
         setLoading(true);
@@ -44,7 +54,6 @@ const Reports = () => {
             if (!result.success) throw new Error(result.error);
 
             // Fetch transactions for detailed export
-            // We'll use getTransactions and filter them based on the period
             const allTransactions = await window.electron.getTransactions();
             let filteredTransactions = [];
             const now = new Date();
@@ -65,42 +74,23 @@ const Reports = () => {
                 filteredTransactions = allTransactions;
             }
 
-            // Prepare Excel data
-            const wsData = filteredTransactions.map(t => ({
-                'Transaction ID': t.transaction_number,
-                'Date': new Date(t.created_at + ' UTC').toLocaleDateString(),
-                'Time': new Date(t.created_at + ' UTC').toLocaleTimeString(),
-                'Customer': t.customer_name || 'Walk-in',
-                'Cashier': t.cashier_name || 'System',
-                'Total Amount': t.total_amount
-            }));
+            // Generate PDF instead of Excel
+            const reportData = {
+                summary: result.salesByProduct,
+                transactions: filteredTransactions
+            };
 
-            // Summary Sheet
-            const summaryData = result.salesByProduct.map(p => ({
-                'Item Name': p.name,
-                'Total Weight (kg)': p.total_weight,
-                'Total Purchases': p.total_amount
-            }));
-
-            const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.json_to_sheet(wsData);
-            const wsSummary = XLSX.utils.json_to_sheet(summaryData);
-
-            XLSX.utils.book_append_sheet(wb, ws, "Transactions");
-            XLSX.utils.book_append_sheet(wb, wsSummary, "Scrap Sales Summary");
-
-            const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-            const base64Data = btoa(String.fromCharCode.apply(null, new Uint8Array(excelBuffer)));
-
-            const saveResult = await window.electron.saveExcel({
-                filename: `Report_${exportPeriod}_${new Date().toISOString().split('T')[0]}.xlsx`,
-                base64Data
+            const pdfResult = await generateReportPDF(reportData, shopSettings, exportPeriod);
+            
+            const saveResult = await window.electron.savePDF({
+                filename: pdfResult.filename,
+                base64Data: pdfResult.base64Data
             });
 
             if (saveResult.success) {
                 Swal.fire({
                     title: 'Export Success!',
-                    text: 'Report saved successfully.',
+                    text: 'PDF Report saved successfully.',
                     icon: 'success',
                     timer: 2000,
                     showConfirmButton: false,
@@ -122,17 +112,36 @@ const Reports = () => {
                     <p className="text-slate-400 font-bold uppercase tracking-[0.2em] text-[9px] lg:text-[10px]">Analyze sales & performance</p>
                 </div>
                 
-                <div className="flex flex-wrap gap-2 lg:gap-3">
-                    {['today', 'week', 'month', 'year'].map((p) => (
-                        <button 
-                            key={p}
-                            onClick={() => handleExport(p)}
-                            className="flex-1 min-w-[120px] sm:flex-none bg-white border-2 border-slate-100 hover:border-brand-500 hover:text-brand-600 text-slate-500 font-black px-3 lg:px-4 py-2 lg:py-2.5 rounded-xl transition-all text-[9px] lg:text-[10px] uppercase tracking-widest flex items-center justify-center gap-2"
-                        >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                            Export {p}
-                        </button>
-                    ))}
+                <div className="flex flex-wrap gap-2 lg:gap-3 relative export-dropdown-container">
+                    <button 
+                        onClick={() => setShowExportDropdown(!showExportDropdown)}
+                        className={`bg-brand-600 hover:bg-brand-700 text-white font-black px-6 py-3 rounded-xl transition-all text-[10px] lg:text-xs uppercase tracking-widest flex items-center justify-center gap-3 shadow-lg shadow-brand-100 ${showExportDropdown ? 'ring-4 ring-brand-100' : ''}`}
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        Export PDF Report
+                        <svg className={`w-3 h-3 transition-transform duration-200 ${showExportDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+
+                    {showExportDropdown && (
+                        <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 py-3 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                            <div className="px-4 py-2 mb-2 border-b border-slate-50">
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Select Period</p>
+                            </div>
+                            {['today', 'week', 'month', 'year'].map((p) => (
+                                <button 
+                                    key={p}
+                                    onClick={() => {
+                                        handleExport(p);
+                                        setShowExportDropdown(false);
+                                    }}
+                                    className="w-full text-left px-5 py-3 hover:bg-slate-50 transition-colors flex items-center gap-3 group"
+                                >
+                                    <div className="w-2 h-2 rounded-full bg-slate-200 group-hover:bg-brand-500 transition-colors"></div>
+                                    <span className="text-[11px] font-black text-slate-600 uppercase tracking-widest group-hover:text-brand-600">Export {p}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
 

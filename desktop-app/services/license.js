@@ -5,7 +5,7 @@ const { app } = require('electron');
 const path = require('path');
 
 // API Configuration
-const API_URL = 'http://127.0.0.1:8000/api'; // Pointing to your local Laravel server
+const API_URL = 'http://192.168.55.106:8000/api'; // Pointing to your server's network IP
 
 /**
  * Generate a unique device fingerprint
@@ -28,7 +28,7 @@ const getFingerprint = () => {
 const checkLocalLicense = async () => {
     const license = await db.get('SELECT * FROM license WHERE id = 1');
     if (license && license.is_valid === 1) {
-        return { valid: true, license };
+        return { valid: true, license, isMaster: license.is_master === 1 };
     }
     return { valid: false };
 };
@@ -74,21 +74,42 @@ const activateLicense = async (licenseKey) => {
     const deviceId = getFingerprint();
 
     try {
+        // 1. First check if it's a master key
+        try {
+            const masterResponse = await axios.post(`${API_URL}/validate-master-key`, {
+                license_key: licenseKey,
+                device_id: deviceId
+            });
+
+            if (masterResponse.status === 200 && masterResponse.data.success && masterResponse.data.is_master) {
+                // Save to local DB as master license
+                await db.run(
+                    'UPDATE license SET license_key = ?, device_id = ?, activated_at = CURRENT_TIMESTAMP, is_valid = 1, is_master = 1 WHERE id = 1',
+                    [licenseKey, deviceId]
+                );
+                return { success: true, message: 'Master license activated successfully (TEST MODE)' };
+            }
+        } catch (masterErr) {
+            // If it fails, it might just not be a master key, so proceed to normal check
+            console.log('Not a master key or master API offline, trying normal activation...');
+        }
+
+        // 2. Proceed with normal license activation flow
         const response = await axios.post(`${API_URL}/activate`, {
             license_key: licenseKey,
             device_id: deviceId
         });
 
         if (response.status === 200) {
-            // Save to local DB
+            // Save to local DB as normal license
             await db.run(
-                'UPDATE license SET license_key = ?, device_id = ?, activated_at = CURRENT_TIMESTAMP, is_valid = 1 WHERE id = 1',
+                'UPDATE license SET license_key = ?, device_id = ?, activated_at = CURRENT_TIMESTAMP, is_valid = 1, is_master = 0 WHERE id = 1',
                 [licenseKey, deviceId]
             );
             return { success: true, message: 'License activated successfully' };
         }
     } catch (err) {
-        const message = err.response?.data?.message || 'Connection to activation server failed';
+        const message = err.response?.data?.message || `Connection to server (${API_URL}) failed`;
         return { success: false, message };
     }
 

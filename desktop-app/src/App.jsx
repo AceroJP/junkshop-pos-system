@@ -12,6 +12,7 @@ import Sellers from './pages/Sellers';
 
 function App() {
   const [isLicenseValid, setIsLicenseValid] = useState(null);
+  const [isMaster, setIsMaster] = useState(false);
   const [isSetupComplete, setIsSetupComplete] = useState(null);
   const [shopSettings, setShopSettings] = useState({});
   const [user, setUser] = useState(null);
@@ -43,6 +44,7 @@ function App() {
     if (window.electron && window.electron.checkLicense) {
       const licenseResult = await window.electron.checkLicense();
       setIsLicenseValid(licenseResult.valid);
+      setIsMaster(licenseResult.isMaster || false);
       
       if (licenseResult.valid) {
         // 2. Check setup status
@@ -69,10 +71,54 @@ function App() {
                 confirmButton: 'rounded-xl font-bold uppercase tracking-widest text-xs px-6 py-3',
                 cancelButton: 'rounded-xl font-bold uppercase tracking-widest text-xs px-6 py-3'
               }
-            }).then((result) => {
+            }).then(async (result) => {
               if (result.isConfirmed) {
-                // Open the download URL in default browser
-                window.open(updateResult.downloadUrl, '_blank');
+                // Show downloading effect
+                let timerInterval;
+                Swal.fire({
+                  title: 'Preparing Download...',
+                  html: 'We are connecting to the update server... <b>0</b>%',
+                  timer: 2000,
+                  timerProgressBar: true,
+                  allowOutsideClick: false,
+                  didOpen: () => {
+                    Swal.showLoading();
+                    const b = Swal.getHtmlContainer().querySelector('b');
+                    timerInterval = setInterval(() => {
+                      const timerLeft = Swal.getTimerLeft();
+                      const progress = Math.min(100, Math.round(((2000 - timerLeft) / 2000) * 100));
+                      if (b) b.textContent = progress;
+                    }, 100);
+                  },
+                  willClose: () => {
+                    clearInterval(timerInterval);
+                  },
+                  customClass: {
+                    popup: 'rounded-[2rem]',
+                    title: 'font-black uppercase tracking-tight',
+                    htmlContainer: 'font-bold text-slate-500'
+                  }
+                 }).then(() => {
+                   // Open the download URL in default browser using Electron's shell
+                   if (window.electron && window.electron.openExternal) {
+                     window.electron.openExternal(updateResult.downloadUrl);
+                   } else {
+                     window.open(updateResult.downloadUrl, '_blank');
+                   }
+                   
+                   // Final notification
+                  Swal.fire({
+                    title: 'Download Started!',
+                    text: 'The installer is being downloaded in your browser. Please run it once finished.',
+                    icon: 'success',
+                    timer: 5000,
+                    showConfirmButton: false,
+                    customClass: {
+                      popup: 'rounded-[2rem]',
+                      title: 'font-black uppercase tracking-tight'
+                    }
+                  });
+                });
               }
             });
           }
@@ -135,9 +181,16 @@ function App() {
 
   // 5. Main App
   return (
-    <div className="relative flex flex-col lg:flex-row h-screen bg-slate-50 overflow-hidden">
+    <div className={`relative flex flex-col lg:flex-row h-screen bg-slate-50 overflow-hidden ${isMaster ? 'pt-6' : ''}`}>
+      {/* Master License Banner */}
+      {isMaster && (
+        <div className="absolute top-0 left-0 right-0 bg-rose-600 text-white text-[10px] font-black uppercase tracking-[0.5em] py-1.5 text-center z-[200] shadow-lg pointer-events-none">
+          Test Mode - Master License Active
+        </div>
+      )}
+
       {/* Sidebar */}
-      <aside className={`w-full lg:w-72 bg-white border-b lg:border-b-0 lg:border-r border-slate-100 flex flex-col shrink-0 transition-all duration-300 ${activeModal ? 'blur-sm grayscale-[0.2] pointer-events-none' : ''}`}>
+      <aside className={`w-full lg:w-64 xl:w-72 bg-white border-b lg:border-b-0 lg:border-r border-slate-100 flex flex-col shrink-0 transition-all duration-300 ${activeModal ? 'blur-sm grayscale-[0.2] pointer-events-none' : ''}`}>
         <div className="h-20 lg:h-24 flex items-center px-6 lg:px-8 gap-4 border-b border-slate-50">
           <div className="w-10 h-10 lg:w-12 lg:h-12 bg-brand-600 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-200 overflow-hidden">
             {shopSettings.shop_logo ? (
@@ -238,7 +291,7 @@ function App() {
           {currentPage === 'Inventory' && <Products openModal={(type, data) => { setActiveModal(type); setModalData(data); }} />}
           {currentPage === 'Sellers' && <Sellers openModal={(type, data) => { setActiveModal(type); setModalData(data); }} />}
           {currentPage === 'Settings' && <Settings shopSettings={shopSettings} onSettingsUpdate={initApp} />}
-          {currentPage === 'Reports' && <Reports />}
+          {currentPage === 'Reports' && <Reports shopSettings={shopSettings} />}
         </div>
       </main>
 

@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     $settings = [
         'license_price' => \App\Models\Setting::get('license_price', 2999.00),
+        'showcase_items' => \App\Models\Setting::get('showcase_items'),
     ];
     return view('welcome', compact('settings'));
 });
@@ -42,6 +43,14 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
     // License Management
     Route::get('/licenses', [App\Http\Controllers\Admin\LicenseController::class, 'index'])->name('licenses.index');
     Route::post('/licenses/{license}/revoke', [App\Http\Controllers\Admin\LicenseController::class, 'revoke'])->name('licenses.revoke');
+
+    // Master License Management
+    Route::middleware(['super_admin'])->group(function () {
+        Route::get('/master-licenses', [App\Http\Controllers\Admin\MasterLicenseController::class, 'index'])->name('master-licenses.index');
+        Route::post('/master-licenses', [App\Http\Controllers\Admin\MasterLicenseController::class, 'store'])->name('master-licenses.store');
+        Route::post('/master-licenses/{license}/toggle', [App\Http\Controllers\Admin\MasterLicenseController::class, 'toggle'])->name('master-licenses.toggle');
+        Route::delete('/master-licenses/{license}', [App\Http\Controllers\Admin\MasterLicenseController::class, 'destroy'])->name('master-licenses.destroy');
+    });
 
     // Revenue Reports
     Route::get('/reports', [App\Http\Controllers\Admin\ReportController::class, 'index'])->name('reports.index');
