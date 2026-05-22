@@ -127,19 +127,21 @@
                                 <!-- Image Preview/Upload -->
                                 <div class="space-y-2">
                                     <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Showcase Image</label>
-                                    <div class="relative aspect-video bg-white rounded-xl border-2 border-dashed border-slate-200 overflow-hidden group/img">
-                                        @if(isset($item['image_path']))
-                                            <img src="{{ asset($item['image_path']) }}" class="w-full h-full object-cover">
-                                        @else
-                                            <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-300">
-                                                <svg class="w-8 h-8 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                                <span class="text-[8px] font-black uppercase">No Image</span>
-                                            </div>
-                                        @endif
+                                    <div class="relative aspect-video bg-white rounded-xl border-2 border-dashed border-slate-200 overflow-hidden group/img flex items-center justify-center">
+                                        <div class="preview-container w-full h-full flex items-center justify-center">
+                                            @if(isset($item['image_path']))
+                                                <img src="{{ asset($item['image_path']) }}" class="w-full h-full object-cover">
+                                            @else
+                                                <div class="flex flex-col items-center justify-center text-slate-300">
+                                                    <svg class="w-8 h-8 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                                    <span class="text-[8px] font-black uppercase">No Image</span>
+                                                </div>
+                                            @endif
+                                        </div>
                                         <div class="absolute inset-0 bg-slate-900/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
                                             <label class="cursor-pointer bg-white text-slate-900 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest">
                                                 Change
-                                                <input type="file" name="showcase_items[{{ $index }}][image]" class="hidden" accept="image/*">
+                                                <input type="file" name="showcase_items[{{ $index }}][image]" class="hidden" accept="image/*" onchange="previewImage(this)">
                                             </label>
                                         </div>
                                     </div>
@@ -163,6 +165,17 @@
             </div>
 
             <script>
+                function previewImage(input) {
+                    const container = input.closest('.showcase-item').querySelector('.preview-container');
+                    if (input.files && input.files[0]) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            container.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
+                        }
+                        reader.readAsDataURL(input.files[0]);
+                    }
+                }
+
                 function addShowcaseItem() {
                     const container = document.getElementById('showcase-container');
                     const index = container.querySelectorAll('.showcase-item').length;
@@ -172,9 +185,29 @@
                             <button type="button" onclick="this.closest('.showcase-item').remove()" class="absolute top-4 right-4 text-slate-300 hover:text-rose-500 transition-colors">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                             </button>
-                            <div class="md:col-span-3">
-                                <span class="text-xs font-black text-brand-600 uppercase tracking-[0.2em] mb-1 block">New Card</span>
-                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Add your content</p>
+                            <div class="md:col-span-3 space-y-4">
+                                <div>
+                                    <span class="text-xs font-black text-brand-600 uppercase tracking-[0.2em] mb-1 block">New Card</span>
+                                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Display on landing page</p>
+                                </div>
+                                
+                                <div class="space-y-2">
+                                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Showcase Image</label>
+                                    <div class="relative aspect-video bg-white rounded-xl border-2 border-dashed border-slate-200 overflow-hidden group/img flex items-center justify-center">
+                                        <div class="preview-container w-full h-full flex items-center justify-center">
+                                            <div class="flex flex-col items-center justify-center text-slate-300">
+                                                <svg class="w-8 h-8 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                                <span class="text-[8px] font-black uppercase">No Image</span>
+                                            </div>
+                                        </div>
+                                        <div class="absolute inset-0 bg-slate-900/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                                            <label class="cursor-pointer bg-white text-slate-900 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest">
+                                                Upload
+                                                <input type="file" name="showcase_items[${index}][image]" class="hidden" accept="image/*" onchange="previewImage(this)">
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <div class="md:col-span-9 space-y-4 pr-8">
                                 <div class="space-y-1">
