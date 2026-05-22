@@ -7,10 +7,21 @@ const Transactions = ({ shopSettings, openModal }) => {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [downloading, setDownloading] = useState(false);
+    
+    // Pagination & Filter States
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(10);
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
 
     useEffect(() => {
         loadTransactions();
     }, []);
+
+    // Reset to page 1 when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, dateFrom, dateTo]);
 
     const loadTransactions = async () => {
         if (!window.electron || !window.electron.getTransactions) {
@@ -116,30 +127,80 @@ const Transactions = ({ shopSettings, openModal }) => {
         }
     };
 
-    const filteredTransactions = transactions.filter(t => 
-        t.transaction_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (t.cashier_name && t.cashier_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (t.customer_name && t.customer_name.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
+    const filteredTransactions = transactions.filter(t => {
+        const matchesSearch = t.transaction_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (t.cashier_name && t.cashier_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+            (t.customer_name && t.customer_name.toLowerCase().includes(searchQuery.toLowerCase()));
+        
+        // Date filtering
+        const transactionDate = new Date(t.created_at).toISOString().split('T')[0];
+        const matchesDateFrom = !dateFrom || transactionDate >= dateFrom;
+        const matchesDateTo = !dateTo || transactionDate <= dateTo;
+
+        return matchesSearch && matchesDateFrom && matchesDateTo;
+    });
+
+    // Pagination Logic
+    const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentTransactions = filteredTransactions.slice(indexOfFirstItem, indexOfLastItem);
+
+    const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10 animate-fade-in pb-20">
             {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
                 <div className="space-y-1">
                     <h2 className="text-4xl font-black text-slate-900 uppercase tracking-tight leading-none">Transactions</h2>
                     <p className="text-slate-400 font-bold uppercase tracking-[0.2em] text-[10px]">View & reprint receipts</p>
                 </div>
                 
-                <div className="bg-white border-2 border-slate-100 h-14 w-full sm:w-80 rounded-2xl flex items-center px-4 gap-3 focus-within:ring-4 focus-within:ring-brand-500/10 focus-within:border-brand-500 transition-all">
-                    <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                    <input 
-                        type="text" 
-                        placeholder="Search ID, Cashier or Customer..." 
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="bg-transparent outline-none text-sm font-bold w-full text-slate-900 placeholder:text-slate-400" 
-                    />
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                    {/* Date Filters */}
+                    <div className="flex items-center gap-2 bg-white border-2 border-slate-100 p-1.5 rounded-2xl">
+                        <div className="flex flex-col px-3">
+                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">From</span>
+                            <input 
+                                type="date" 
+                                value={dateFrom}
+                                onChange={(e) => setDateFrom(e.target.value)}
+                                className="bg-transparent outline-none text-[11px] font-bold text-slate-900" 
+                            />
+                        </div>
+                        <div className="w-px h-8 bg-slate-100"></div>
+                        <div className="flex flex-col px-3">
+                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">To</span>
+                            <input 
+                                type="date" 
+                                value={dateTo}
+                                onChange={(e) => setDateTo(e.target.value)}
+                                className="bg-transparent outline-none text-[11px] font-bold text-slate-900" 
+                            />
+                        </div>
+                        {(dateFrom || dateTo) && (
+                            <button 
+                                onClick={() => { setDateFrom(''); setDateTo(''); }}
+                                className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                                title="Clear Dates"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Search */}
+                    <div className="bg-white border-2 border-slate-100 h-14 w-full sm:w-72 rounded-2xl flex items-center px-4 gap-3 focus-within:ring-4 focus-within:ring-brand-500/10 focus-within:border-brand-500 transition-all">
+                        <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        <input 
+                            type="text" 
+                            placeholder="Search..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="bg-transparent outline-none text-sm font-bold w-full text-slate-900 placeholder:text-slate-400" 
+                        />
+                    </div>
                 </div>
             </div>
 
@@ -164,7 +225,7 @@ const Transactions = ({ shopSettings, openModal }) => {
                                         <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-brand-500 mx-auto"></div>
                                     </td>
                                 </tr>
-                            ) : filteredTransactions.length === 0 ? (
+                            ) : currentTransactions.length === 0 ? (
                                 <tr>
                                     <td colSpan="6" className="px-10 py-20 text-center">
                                         <div className="flex flex-col items-center gap-4 opacity-20">
@@ -174,7 +235,7 @@ const Transactions = ({ shopSettings, openModal }) => {
                                     </td>
                                 </tr>
                             ) : (
-                                filteredTransactions.map(t => (
+                                currentTransactions.map(t => (
                                     <tr key={t.id} className="hover:bg-slate-50/50 transition-colors group">
                                         <td className="px-6 lg:px-8 py-6">
                                             <span className="font-black text-slate-900 uppercase tracking-tight text-sm">{t.transaction_number}</span>
@@ -183,19 +244,37 @@ const Transactions = ({ shopSettings, openModal }) => {
                                             <div className="flex flex-col">
                                                 <span className="font-bold text-slate-700 text-sm">{new Date(t.created_at + ' UTC').toLocaleDateString()}</span>
                                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(t.created_at + ' UTC').toLocaleTimeString()}</span>
+                                                {t.status === 'completed' && t.paid_at && (
+                                                    <div className="mt-1 pt-1 border-t border-slate-100">
+                                                        <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest block">Paid At:</span>
+                                                        <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-tight">
+                                                            {new Date(t.paid_at + ' UTC').toLocaleDateString()} {new Date(t.paid_at + ' UTC').toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {t.status === 'partial' && t.paid_at && (
+                                                    <div className="mt-1 pt-1 border-t border-slate-100">
+                                                        <span className="text-[8px] font-black text-amber-500 uppercase tracking-widest block">Last Pay:</span>
+                                                        <span className="text-[9px] font-bold text-amber-600 uppercase tracking-tight">
+                                                            {new Date(t.paid_at + ' UTC').toLocaleDateString()} {new Date(t.paid_at + ' UTC').toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="px-6 lg:px-8 py-6">
                                             <span className="font-bold text-slate-600 text-sm">{t.customer_name || 'Walk-in'}</span>
                                         </td>
                                         <td className="px-6 lg:px-8 py-6">
-                                            <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${
+                                            <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest w-fit ${
                                                 t.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 
                                                 t.status === 'unpaid' ? 'bg-rose-50 text-rose-600' : 
                                                 t.status === 'partial' ? 'bg-amber-50 text-amber-600' :
                                                 'bg-slate-50 text-slate-600'
                                             }`}>
-                                                {t.status}
+                                                {t.status === 'completed' ? 'Paid' : 
+                                                 t.status === 'unpaid' ? 'Unpaid' : 
+                                                 'Partial'}
                                             </span>
                                         </td>
                                         <td className="px-6 lg:px-8 py-6">
@@ -236,6 +315,48 @@ const Transactions = ({ shopSettings, openModal }) => {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Pagination Footer */}
+                {!loading && totalPages > 1 && (
+                    <div className="px-8 py-6 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                            Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredTransactions.length)} of {filteredTransactions.length}
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <button 
+                                onClick={() => paginate(currentPage - 1)}
+                                disabled={currentPage === 1}
+                                className="p-2 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
+                            </button>
+                            
+                            <div className="flex items-center gap-1">
+                                {[...Array(totalPages)].map((_, i) => (
+                                    <button
+                                        key={i + 1}
+                                        onClick={() => paginate(i + 1)}
+                                        className={`w-10 h-10 rounded-xl text-xs font-black transition-all ${
+                                            currentPage === i + 1 
+                                            ? 'bg-brand-500 text-white shadow-lg shadow-brand-200' 
+                                            : 'bg-white text-slate-400 border border-slate-200 hover:border-brand-500 hover:text-brand-600'
+                                        }`}
+                                    >
+                                        {i + 1}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <button 
+                                onClick={() => paginate(currentPage + 1)}
+                                disabled={currentPage === totalPages}
+                                className="p-2 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

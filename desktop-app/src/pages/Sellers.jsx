@@ -18,6 +18,8 @@ const Sellers = ({ openModal }) => {
         loadSellers();
     }, [searchQuery, filter]);
 
+    const [payments, setPayments] = useState([]);
+
     const loadSellers = async () => {
         setLoading(true);
         try {
@@ -33,10 +35,33 @@ const Sellers = ({ openModal }) => {
     const viewSellerDetails = async (seller) => {
         try {
             const txns = await window.electron.getSellerTransactions(seller.id);
+            const pmts = await window.electron.getPayments(seller.id);
             setSelectedSeller(seller);
             setSellerTransactions(txns);
+            setPayments(pmts);
         } catch (err) {
             Swal.fire('Error', 'Failed to load seller history', 'error');
+        }
+    };
+
+    const handlePrintStatement = async () => {
+        if (!selectedSeller) return;
+        try {
+            const result = await window.electron.printStatement(selectedSeller.id);
+            if (result.success) {
+                Swal.fire({
+                    title: 'Printing Statement...',
+                    text: 'The statement has been sent to your printer.',
+                    icon: 'success',
+                    timer: 2000,
+                    showConfirmButton: false,
+                    customClass: { popup: 'rounded-[2rem]' }
+                });
+            } else {
+                Swal.fire('Printer Error', result.error, 'error');
+            }
+        } catch (err) {
+            Swal.fire('Error', 'Failed to print statement', 'error');
         }
     };
 
@@ -311,7 +336,18 @@ const Sellers = ({ openModal }) => {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-3">
-                                            <button onClick={() => handleRecordPayment(selectedSeller)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-emerald-900/50 transition-all active:scale-95">Record Payment</button>
+                                            <button 
+                                                onClick={() => handleRecordPayment(selectedSeller)} 
+                                                disabled={selectedSeller.total_balance_owed <= 0}
+                                                className={`px-6 py-3 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-lg transition-all active:scale-95 ${
+                                                    selectedSeller.total_balance_owed <= 0 
+                                                    ? 'bg-slate-700 text-slate-500 cursor-not-allowed' 
+                                                    : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/50'
+                                                }`}
+                                            >
+                                                {selectedSeller.total_balance_owed <= 0 ? 'Fully Paid' : 'Record Payment'}
+                                            </button>
+                                            <button onClick={handlePrintStatement} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-blue-900/50 transition-all">Print Statement</button>
                                             <button onClick={() => handleUpdateInfo(selectedSeller)} className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-6 py-3 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all">Edit Info</button>
                                         </div>
                                     </div>
@@ -347,9 +383,11 @@ const Sellers = ({ openModal }) => {
                                                             txn.status === 'unpaid' ? 'bg-rose-100 text-rose-600' : 
                                                             'bg-amber-100 text-amber-600'
                                                         }`}>
-                                                            {txn.status}
+                                                            {txn.status === 'completed' ? 'Paid' : 
+                                                             txn.status === 'unpaid' ? 'Unpaid' : 
+                                                             'Partial'}
                                                         </span>
-                                                        {txn.paid_at && <span className="text-[8px] font-bold text-slate-400 uppercase italic">Paid: {new Date(txn.paid_at).toLocaleDateString()}</span>}
+                                                        {txn.paid_at && <span className="text-[8px] font-bold text-slate-400 uppercase italic">Last Payment: {new Date(txn.paid_at).toLocaleDateString()}</span>}
                                                     </div>
                                                 </div>
                                                 <div className="text-right space-y-1">

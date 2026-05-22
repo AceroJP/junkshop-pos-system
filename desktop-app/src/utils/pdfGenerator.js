@@ -69,13 +69,25 @@ export const generateReceiptPDF = async (transaction, items, shopSettings) => {
     doc.text('TOTAL AMOUNT:', 140, finalY, { align: 'right' });
     doc.text(`PHP ${transaction.total_amount.toFixed(2)}`, 195, finalY, { align: 'right' });
 
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Payment Received:', 140, finalY + 7, { align: 'right' });
-    doc.text(`PHP ${transaction.payment_received.toFixed(2)}`, 195, finalY + 7, { align: 'right' });
+    // Only show Payment and Change for cash sales (completed)
+    if (transaction.status === 'completed') {
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Payment Received:', 140, finalY + 7, { align: 'right' });
+        doc.text(`PHP ${transaction.payment_received.toFixed(2)}`, 195, finalY + 7, { align: 'right' });
 
-    doc.text('Change:', 140, finalY + 12, { align: 'right' });
-    doc.text(`PHP ${transaction.change_amount.toFixed(2)}`, 195, finalY + 12, { align: 'right' });
+        doc.text('Change:', 140, finalY + 12, { align: 'right' });
+        doc.text(`PHP ${transaction.change_amount.toFixed(2)}`, 195, finalY + 12, { align: 'right' });
+    } else {
+        // Show remaining balance for partial/unpaid
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(225, 29, 72); // rose-600
+        const remaining = transaction.total_amount - (transaction.paid_amount || 0);
+        doc.text('REMAINING BALANCE:', 140, finalY + 7, { align: 'right' });
+        doc.text(`PHP ${remaining.toFixed(2)}`, 195, finalY + 7, { align: 'right' });
+        doc.setTextColor(0, 0, 0);
+    }
 
     // --- Footer ---
     doc.setFontSize(10);

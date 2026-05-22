@@ -251,20 +251,34 @@ ipcMain.handle('get-seller-transactions', async (event, id) => {
 
 ipcMain.handle('record-payment', async (event, { seller_id, amount, notes }) => {
     try {
-        // 1. Get seller balance
-        const seller = await db.get('SELECT total_balance_owed FROM sellers WHERE id = ?', [seller_id]);
-        if (!seller || seller.total_balance_owed < amount) {
-            return { success: false, error: 'Invalid amount or seller' };
+        const seller = await db.get('SELECT * FROM sellers WHERE id = ?', [seller_id]);
+        if (!seller) throw new Error('Seller not found');
+        
+        const previousBalance = seller.total_balance_owed;
+
+        // Edge case: Prevent recording ₱0 payment
+        if (amount <= 0) {
+            return { success: false, error: 'Payment amount must be greater than zero.' };
         }
 
-        // 2. Find unpaid transactions for this seller to mark as paid
-        const unpaidTransactions = await db.all('SELECT * FROM transactions WHERE seller_id = ? AND status = "unpaid" ORDER BY created_at ASC', [seller_id]);
-        
+        // Edge case: Prevent paying more than remaining balance
+        if (amount > previousBalance) {
+            return { success: false, error: `Payment cannot exceed current balance (₱${previousBalance.toFixed(2)})` };
+        }
+
+        // 1. Fetch unpaid/partial transactions for this seller (oldest first)
+        const transactions = await db.all(
+            'SELECT * FROM transactions WHERE seller_id = ? AND status IN ("unpaid", "partial") ORDER BY created_at ASC',
+            [seller_id]
+        );
+
         let remainingToPay = amount;
-        for (const txn of unpaidTransactions) {
+        
+        for (const txn of transactions) {
             if (remainingToPay <= 0) break;
 
             const txnOwed = txn.total_amount - (txn.paid_amount || 0);
+            
             if (remainingToPay >= txnOwed) {
                 // Fully pay this txn
                 await db.run(
@@ -272,7 +286,7 @@ ipcMain.handle('record-payment', async (event, { seller_id, amount, notes }) => 
                     [txn.id]
                 );
                 remainingToPay -= txnOwed;
-            } else {
+            } else { 
                 // Partially pay this txn
                 await db.run(
                     'UPDATE transactions SET status = "partial", paid_amount = paid_amount + ?, paid_at = CURRENT_TIMESTAMP WHERE id = ?',
@@ -282,25 +296,41 @@ ipcMain.handle('record-payment', async (event, { seller_id, amount, notes }) => 
             }
         }
 
-        // 3. Update seller balance
+        const newBalance = previousBalance - amount;
+
+        // 2. Update seller balance
         await db.run(
-            'UPDATE sellers SET total_balance_owed = total_balance_owed - ? WHERE id = ?',
-            [amount, seller_id]
+            'UPDATE sellers SET total_balance_owed = ?, last_transaction_date = CURRENT_TIMESTAMP WHERE id = ?',
+            [newBalance, seller_id]
+        );
+
+        // 3. Record in payments table
+        const paymentResult = await db.run(
+            'INSERT INTO payments (seller_id, amount, previous_balance, new_balance, notes) VALUES (?, ?, ?, ?, ?)',
+            [seller_id, amount, previousBalance, newBalance, notes]
         );
 
         // 4. Print payment receipt
         try {
             const updatedSeller = await db.get('SELECT * FROM sellers WHERE id = ?', [seller_id]);
+            // Fetch oldest unpaid txn for original date reference
+            const oldestUnpaid = await db.get(
+                'SELECT created_at FROM transactions WHERE seller_id = ? ORDER BY created_at ASC LIMIT 1',
+                [seller_id]
+            );
+
             const printResult = await printer.printPaymentReceipt({ 
                 seller: updatedSeller, 
                 amount: amount, 
                 notes: notes,
-                newBalance: updatedSeller.total_balance_owed
+                previousBalance: previousBalance,
+                newBalance: newBalance,
+                originalDate: oldestUnpaid ? oldestUnpaid.created_at : updatedSeller.created_at
             });
-            return { success: true, printSuccess: printResult.success, error: printResult.error };
+            return { success: true, paymentId: paymentResult.id, printSuccess: printResult.success, error: printResult.error };
         } catch (printErr) {
             console.error('Payment receipt printing failed', printErr);
-            return { success: true, printSuccess: false, error: printErr.message };
+            return { success: true, paymentId: paymentResult.id, printSuccess: false, error: printErr.message };
         }
     } catch (err) {
         console.error('Record payment failed', err);
@@ -318,6 +348,24 @@ ipcMain.handle('update-seller-info', async (event, { id, contact_number, address
     } catch (err) {
         console.error('Update seller failed', err);
         return { success: false, error: err.message };
+    }
+});
+
+ipcMain.handle('print-statement', async (event, sellerId) => {
+    try {
+        return await printer.printStatement(sellerId);
+    } catch (err) {
+        console.error('Print statement failed', err);
+        return { success: false, error: err.message };
+    }
+});
+
+ipcMain.handle('get-payments', async (event, sellerId) => {
+    try {
+        return await db.all('SELECT * FROM payments WHERE seller_id = ? ORDER BY created_at DESC', [sellerId]);
+    } catch (err) {
+        console.error('Fetch payments failed', err);
+        return [];
     }
 });
 
