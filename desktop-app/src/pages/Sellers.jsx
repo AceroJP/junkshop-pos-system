@@ -8,6 +8,8 @@ const Sellers = ({ openModal }) => {
     const [filter, setFilter] = useState('all'); // 'all', 'balance'
     const [selectedSeller, setSelectedSeller] = useState(null);
     const [sellerTransactions, setSellerTransactions] = useState([]);
+    const [payments, setPayments] = useState([]);
+    const [viewMode, setViewMode] = useState('transactions'); // 'transactions' or 'payments'
 
     // Stats
     const totalSellers = sellers.length;
@@ -17,8 +19,6 @@ const Sellers = ({ openModal }) => {
     useEffect(() => {
         loadSellers();
     }, [searchQuery, filter]);
-
-    const [payments, setPayments] = useState([]);
 
     const loadSellers = async () => {
         setLoading(true);
@@ -33,6 +33,7 @@ const Sellers = ({ openModal }) => {
     };
 
     const viewSellerDetails = async (seller) => {
+        setLoading(true);
         try {
             const txns = await window.electron.getSellerTransactions(seller.id);
             const pmts = await window.electron.getPayments(seller.id);
@@ -41,6 +42,8 @@ const Sellers = ({ openModal }) => {
             setPayments(pmts);
         } catch (err) {
             Swal.fire('Error', 'Failed to load seller history', 'error');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -81,8 +84,12 @@ const Sellers = ({ openModal }) => {
                         <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Balance Owed</label>
                         <p class="text-2xl font-black text-rose-600">₱${seller.total_balance_owed.toFixed(2)}</p>
                     </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Partial Paid So Far</label>
+                        <p class="text-2xl font-black text-emerald-600">₱${(seller.total_partial_paid || 0).toFixed(2)}</p>
+                    </div>
                     <div class="space-y-2">
-                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount to Pay</label>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest">New Payment Amount</label>
                         <div class="relative">
                             <span class="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-300">₱</span>
                             <input type="number" id="swal-payment-amount" class="w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none font-bold text-slate-900 focus:border-brand-500" value="${paymentAmount}" step="0.01">
@@ -209,6 +216,49 @@ const Sellers = ({ openModal }) => {
         });
     };
 
+    const handleDeleteSeller = (seller) => {
+        Swal.fire({
+            title: 'Delete Seller?',
+            text: `Are you sure you want to remove ${seller.name} from the Credit Tracker? This action cannot be undone.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'YES, DELETE',
+            cancelButtonText: 'CANCEL',
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#64748b',
+            customClass: {
+                popup: 'rounded-[2.5rem]',
+                title: 'font-black uppercase tracking-tight',
+                confirmButton: 'rounded-xl font-bold uppercase tracking-widest text-xs px-8 py-4',
+                cancelButton: 'rounded-xl font-bold uppercase tracking-widest text-xs px-8 py-4'
+            }
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    const response = await window.electron.deleteSeller(seller.id);
+                    if (response.success) {
+                        Swal.fire({
+                            title: 'Deleted!',
+                            text: 'Seller has been removed.',
+                            icon: 'success',
+                            timer: 1500,
+                            showConfirmButton: false,
+                            customClass: { popup: 'rounded-[2rem]' }
+                        });
+                        loadSellers();
+                        if (selectedSeller && selectedSeller.id === seller.id) {
+                            setSelectedSeller(null);
+                        }
+                    } else {
+                        Swal.fire('Error', response.error || 'Failed to delete seller', 'error');
+                    }
+                } catch (err) {
+                    Swal.fire('Error', 'An unexpected error occurred', 'error');
+                }
+            }
+        });
+    };
+
     return (
         <div className="max-w-7xl mx-auto space-y-10 animate-fade-in pb-20">
             {/* Header & Stats */}
@@ -260,7 +310,8 @@ const Sellers = ({ openModal }) => {
                                     <tr className="bg-slate-50 border-b border-slate-100">
                                         <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Seller Name</th>
                                         <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Balance Owed</th>
-                                        <th className="sticky right-0 bg-slate-50 lg:bg-transparent px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right shadow-[-12px_0_15px_-3px_rgba(0,0,0,0.02)] lg:shadow-none">Actions</th>
+                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Partial Paid</th>
+                                        <th className="sticky right-0 bg-slate-50 lg:bg-transparent px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center shadow-[-12px_0_15px_-3px_rgba(0,0,0,0.02)] lg:shadow-none">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
@@ -284,8 +335,13 @@ const Sellers = ({ openModal }) => {
                                                         ₱{seller.total_balance_owed.toFixed(2)}
                                                     </span>
                                                 </td>
-                                                <td className="sticky right-0 bg-white group-hover:bg-slate-50/50 group-[.bg-brand-50\/50]:bg-brand-50/50 px-8 py-5 text-right shadow-[-12px_0_15px_-3px_rgba(0,0,0,0.02)] lg:shadow-none transition-colors">
-                                                    <div className="flex items-center justify-end gap-2 transition-opacity">
+                                                <td className="px-8 py-5">
+                                                    <span className={`text-sm font-black ${seller.total_partial_paid > 0 ? 'text-emerald-600' : 'text-slate-300'}`}>
+                                                        ₱{seller.total_partial_paid.toFixed(2)}
+                                                    </span>
+                                                </td>
+                                                <td className="sticky right-0 bg-white group-hover:bg-slate-50/50 group-[.bg-brand-50\/50]:bg-brand-50/50 px-8 py-5 text-center shadow-[-12px_0_15px_-3px_rgba(0,0,0,0.02)] lg:shadow-none transition-colors">
+                                                    <div className="flex items-center justify-center gap-2 transition-opacity">
                                                         <button 
                                                             onClick={(e) => { e.stopPropagation(); handleRecordPayment(seller); }}
                                                             className="flex items-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all group/btn"
@@ -302,6 +358,16 @@ const Sellers = ({ openModal }) => {
                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                                             <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap hidden sm:inline">Edit</span>
                                                         </button>
+                                                        {seller.total_balance_owed <= 0 && (
+                                                            <button 
+                                                                onClick={(e) => { e.stopPropagation(); handleDeleteSeller(seller); }}
+                                                                className="flex items-center gap-2 px-3 py-2 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all group/btn"
+                                                                title="Delete Seller"
+                                                            >
+                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                                <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap hidden sm:inline">Delete</span>
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>
@@ -353,53 +419,97 @@ const Sellers = ({ openModal }) => {
                                     </div>
                                 </div>
 
-                                <div className="mt-10 grid grid-cols-2 gap-4">
+                                <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Total Balance Owed</p>
-                                        <p className="text-2xl font-black text-rose-500">₱{selectedSeller.total_balance_owed.toFixed(2)}</p>
+                                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Balance Owed</p>
+                                        <p className="text-xl font-black text-rose-500">₱{selectedSeller.total_balance_owed.toFixed(2)}</p>
                                     </div>
                                     <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Total Transactions</p>
-                                        <p className="text-2xl font-black text-slate-300">{sellerTransactions.length}</p>
+                                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Partial Paid</p>
+                                        <p className="text-xl font-black text-emerald-500">₱{(selectedSeller.total_partial_paid || 0).toFixed(2)}</p>
+                                    </div>
+                                    <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Transactions</p>
+                                        <p className="text-xl font-black text-slate-300">{sellerTransactions.length}</p>
                                     </div>
                                 </div>
                             </div>
 
                             {/* History Table */}
-                            <div className="flex-1 p-8 lg:p-10 space-y-6 overflow-y-auto custom-scrollbar">
-                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Transaction History</h4>
-                                <div className="space-y-4">
-                                    {sellerTransactions.length === 0 ? (
-                                        <div className="py-20 text-center text-slate-300 font-bold italic uppercase tracking-widest">No history found</div>
-                                    ) : (
-                                        sellerTransactions.map((txn) => (
-                                            <div key={txn.id} className="group bg-slate-50 rounded-2xl p-5 flex items-center justify-between hover:bg-slate-100 transition-all border border-transparent hover:border-slate-200">
-                                                <div className="space-y-1">
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{new Date(txn.created_at).toLocaleString()}</p>
-                                                    <p className="font-black text-slate-900 uppercase tracking-tight">{txn.transaction_number}</p>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${
-                                                            txn.status === 'completed' ? 'bg-emerald-100 text-emerald-600' : 
-                                                            txn.status === 'unpaid' ? 'bg-rose-100 text-rose-600' : 
-                                                            'bg-amber-100 text-amber-600'
-                                                        }`}>
-                                                            {txn.status === 'completed' ? 'Paid' : 
-                                                             txn.status === 'unpaid' ? 'Unpaid' : 
-                                                             'Partial'}
-                                                        </span>
-                                                        {txn.paid_at && <span className="text-[8px] font-bold text-slate-400 uppercase italic">Last Payment: {new Date(txn.paid_at).toLocaleDateString()}</span>}
+                            <div className="flex-1 p-8 lg:p-10 space-y-6 flex flex-col min-h-0">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex bg-slate-100 p-1 rounded-xl">
+                                        <button 
+                                            onClick={() => setViewMode('transactions')} 
+                                            className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'transactions' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                        >
+                                            Transactions
+                                        </button>
+                                        <button 
+                                            onClick={() => setViewMode('payments')} 
+                                            className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'payments' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                        >
+                                            Payment History
+                                        </button>
+                                    </div>
+                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">{viewMode === 'transactions' ? 'Transaction History' : 'Partial Payments'}</h4>
+                                </div>
+
+                                <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
+                                    {viewMode === 'transactions' ? (
+                                        sellerTransactions.length === 0 ? (
+                                            <div className="py-20 text-center text-slate-300 font-bold italic uppercase tracking-widest">No transaction history found</div>
+                                        ) : (
+                                            sellerTransactions.map((txn) => (
+                                                <div key={txn.id} className="group bg-slate-50 rounded-2xl p-5 flex items-center justify-between hover:bg-slate-100 transition-all border border-transparent hover:border-slate-200">
+                                                    <div className="space-y-1">
+                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{new Date(txn.created_at).toLocaleString()}</p>
+                                                        <p className="font-black text-slate-900 uppercase tracking-tight">{txn.transaction_number}</p>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${
+                                                                txn.status === 'completed' ? 'bg-emerald-100 text-emerald-600' : 
+                                                                txn.status === 'unpaid' ? 'bg-rose-100 text-rose-600' : 
+                                                                'bg-amber-100 text-amber-600'
+                                                            }`}>
+                                                                {txn.status === 'completed' ? 'Paid' : 
+                                                                 txn.status === 'unpaid' ? 'Unpaid' : 
+                                                                 'Partial'}
+                                                            </span>
+                                                            {txn.paid_at && <span className="text-[8px] font-bold text-slate-400 uppercase italic">Last Payment: {new Date(txn.paid_at).toLocaleDateString()}</span>}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right space-y-1">
+                                                        <p className="text-lg font-black text-slate-900 tracking-tight">₱{txn.total_amount.toFixed(2)}</p>
+                                                        {txn.status !== 'completed' && (
+                                                            <p className="text-[9px] font-bold text-rose-500 uppercase tracking-widest">
+                                                                Remaining: ₱{(txn.total_amount - (txn.paid_amount || 0)).toFixed(2)}
+                                                            </p>
+                                                        )}
                                                     </div>
                                                 </div>
-                                                <div className="text-right space-y-1">
-                                                    <p className="text-lg font-black text-slate-900 tracking-tight">₱{txn.total_amount.toFixed(2)}</p>
-                                                    {txn.status !== 'completed' && (
-                                                        <p className="text-[9px] font-bold text-rose-500 uppercase tracking-widest">
-                                                            Remaining: ₱{(txn.total_amount - (txn.paid_amount || 0)).toFixed(2)}
-                                                        </p>
-                                                    )}
+                                            ))
+                                        )
+                                    ) : (
+                                        payments.length === 0 ? (
+                                            <div className="py-20 text-center text-slate-300 font-bold italic uppercase tracking-widest">No payment history found</div>
+                                        ) : (
+                                            payments.map((pmt) => (
+                                                <div key={pmt.id} className="group bg-emerald-50/50 rounded-2xl p-5 flex items-center justify-between hover:bg-emerald-50 transition-all border border-transparent hover:border-emerald-100">
+                                                    <div className="space-y-1">
+                                                        <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">{new Date(pmt.created_at).toLocaleString()}</p>
+                                                        <div className="flex items-center gap-2">
+                                                            <svg className="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                                                            <p className="font-black text-slate-900 uppercase tracking-tight">Partial Payment</p>
+                                                        </div>
+                                                        {pmt.notes && <p className="text-[10px] text-slate-500 italic font-medium">"{pmt.notes}"</p>}
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-lg font-black text-emerald-600 tracking-tight">₱{pmt.amount.toFixed(2)}</p>
+                                                        <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">Cash Received</p>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))
+                                            ))
+                                        )
                                     )}
                                 </div>
                             </div>

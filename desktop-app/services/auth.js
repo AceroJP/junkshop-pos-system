@@ -49,6 +49,22 @@ const logout = () => {
 const getCurrentUser = () => currentUser;
 
 /**
+ * Verify admin password
+ */
+const verifyAdminPassword = async (password) => {
+    try {
+        const user = await db.get("SELECT password FROM users WHERE role = 'admin'");
+        if (!user) return { success: false, error: 'Admin not found' };
+        
+        const match = await bcrypt.compare(password, user.password);
+        return { success: match };
+    } catch (err) {
+        console.error('Password verification error', err);
+        return { success: false, error: err.message };
+    }
+};
+
+/**
  * Reset admin password using master recovery key
  */
 const resetPasswordWithMasterKey = async (masterKey, newPassword) => {
@@ -82,5 +98,6 @@ module.exports = {
     login,
     logout,
     getCurrentUser,
+    verifyAdminPassword,
     resetPasswordWithMasterKey
 };

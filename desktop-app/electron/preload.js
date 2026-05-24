@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('electron', {
     // Auth
     login: (credentials) => ipcRenderer.invoke('login', credentials),
     resetPasswordWithMasterKey: (data) => ipcRenderer.invoke('reset-password-with-master-key', data),
+    verifyAdminPassword: (password) => ipcRenderer.invoke('verify-admin-password', password),
     logout: () => ipcRenderer.invoke('logout'),
 
     // Products
@@ -23,6 +24,7 @@ contextBridge.exposeInMainWorld('electron', {
     saveTransaction: (data) => ipcRenderer.invoke('save-transaction', data),
     getTransactions: () => ipcRenderer.invoke('get-transactions'),
     getTransactionItems: (id) => ipcRenderer.invoke('get-transaction-items', id),
+    deleteTransaction: (id) => ipcRenderer.invoke('delete-transaction', id),
     reprintReceipt: (id) => ipcRenderer.invoke('reprint-receipt', id),
     savePDF: (data) => ipcRenderer.invoke('save-pdf', data),
     saveExcel: (data) => ipcRenderer.invoke('save-excel', data),
@@ -33,7 +35,9 @@ contextBridge.exposeInMainWorld('electron', {
     getSellers: (params) => ipcRenderer.invoke('get-sellers', params),
     getSellerDetails: (id) => ipcRenderer.invoke('get-seller-details', id),
     recordPayment: (data) => ipcRenderer.invoke('record-payment', data),
+    getPayments: (sellerId) => ipcRenderer.invoke('get-payments', sellerId),
     updateSellerInfo: (data) => ipcRenderer.invoke('update-seller-info', data),
+    deleteSeller: (id) => ipcRenderer.invoke('delete-seller', id),
     getSellerTransactions: (id) => ipcRenderer.invoke('get-seller-transactions', id),
 
     // Settings

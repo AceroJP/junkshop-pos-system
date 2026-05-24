@@ -22,6 +22,66 @@ function App() {
   const [activeModal, setActiveModal] = useState(null); // 'product', 'receipt', 'weight', 'checkout'
   const [modalData, setModalData] = useState(null);
 
+  const handleDeleteTransaction = async (transaction) => {
+    const { value: password } = await Swal.fire({
+      title: 'Admin Verification',
+      text: 'Please enter your admin password to delete this transaction.',
+      input: 'password',
+      inputPlaceholder: 'Enter your password',
+      showCancelButton: true,
+      confirmButtonText: 'DELETE TRANSACTION',
+      confirmButtonColor: '#ef4444',
+      customClass: {
+        popup: 'rounded-[2.5rem]',
+        title: 'font-black uppercase tracking-tight',
+        confirmButton: 'rounded-xl font-bold uppercase tracking-widest text-xs px-8 py-4',
+        cancelButton: 'rounded-xl font-bold uppercase tracking-widest text-xs px-8 py-4',
+        input: 'rounded-xl font-bold border-2 border-slate-100 focus:border-brand-500 outline-none transition-all'
+      }
+    });
+
+    if (password) {
+      const verify = await window.electron.verifyAdminPassword(password);
+      if (verify.success) {
+        const result = await Swal.fire({
+          title: 'Final Confirmation',
+          text: `Are you sure you want to PERMANENTLY delete transaction ${transaction.transaction_number}? This will also reverse any credit balance associated with it.`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'YES, DELETE PERMANENTLY',
+          confirmButtonColor: '#ef4444',
+          customClass: {
+            popup: 'rounded-[2.5rem]',
+            title: 'font-black uppercase tracking-tight',
+            confirmButton: 'rounded-xl font-bold uppercase tracking-widest text-xs px-8 py-4',
+            cancelButton: 'rounded-xl font-bold uppercase tracking-widest text-xs px-8 py-4'
+          }
+        });
+
+        if (result.isConfirmed) {
+          const deleteResult = await window.electron.deleteTransaction(transaction.id);
+          if (deleteResult.success) {
+            Swal.fire({
+              title: 'Deleted!',
+              text: 'Transaction has been removed successfully.',
+              icon: 'success',
+              timer: 1500,
+              showConfirmButton: false,
+              customClass: { popup: 'rounded-[2rem]' }
+            });
+            setActiveModal(null);
+            // If the transaction page provides a refresh callback, call it
+            if (modalData.onDelete) modalData.onDelete();
+          } else {
+            Swal.fire('Error', deleteResult.error || 'Failed to delete transaction', 'error');
+          }
+        }
+      } else {
+        Swal.fire('Unauthorized', 'Incorrect admin password.', 'error');
+      }
+    }
+  };
+
   useEffect(() => {
     if (activeModal) {
       document.body.style.overflow = 'hidden';
@@ -304,85 +364,114 @@ function App() {
           <div className="relative z-10 w-full flex items-center justify-center pointer-events-none">
             {/* 1. Receipt Details Modal */}
             {activeModal === 'receipt' && modalData && (
-              <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,0.15)] border border-slate-100 flex flex-col max-h-[90vh] pointer-events-auto">
-                <div className="p-8 lg:p-10 flex flex-col overflow-hidden h-full">
-                  <div className="flex items-center justify-between mb-8 shrink-0">
+              <div className="bg-white w-full max-w-4xl rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,0.15)] border border-slate-100 flex flex-col max-h-[90vh] pointer-events-auto">
+                <div className="p-8 lg:p-12 flex flex-col overflow-hidden h-full">
+                  <div className="flex items-center justify-between mb-10 shrink-0">
                     <div>
-                      <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Receipt Details</h3>
-                      <p className="text-brand-600 font-bold text-xs uppercase tracking-widest mt-1">{modalData.transaction.transaction_number}</p>
+                      <h3 className="text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">Receipt Details</h3>
+                      <p className="text-brand-600 font-bold text-sm uppercase tracking-widest mt-2">{modalData.transaction.transaction_number}</p>
                     </div>
-                    <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-rose-500 transition-colors p-2 hover:bg-rose-50 rounded-xl">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-rose-500 transition-colors p-3 hover:bg-rose-50 rounded-2xl">
+                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                   </div>
                   
-                  <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-8">
-                    {/* Summary Info */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-slate-50 p-4 rounded-2xl">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Date</p>
-                        <p className="font-bold text-slate-900 text-sm">{new Date(modalData.transaction.created_at + ' UTC').toLocaleString()}</p>
-                      </div>
-                      <div className="bg-slate-50 p-4 rounded-2xl">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Cashier</p>
-                        <p className="font-bold text-slate-900 text-sm">{modalData.transaction.cashier_name || 'System'}</p>
-                      </div>
-                      {modalData.transaction.customer_name && (
-                        <div className="bg-slate-50 p-4 rounded-2xl col-span-2">
-                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Customer</p>
-                          <p className="font-bold text-slate-900 text-sm">{modalData.transaction.customer_name}</p>
+                  <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+                      {/* Left Side: Items List */}
+                      <div className="lg:col-span-7 space-y-6">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                          <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Purchased Items</h4>
+                          <span className="text-[10px] font-black text-slate-400 uppercase">{modalData.items.length} Items</span>
                         </div>
-                      )}
-                    </div>
-
-                    {/* Items List */}
-                    <div className="space-y-4">
-                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">Purchased Items</h4>
-                      <div className="space-y-3">
-                        {modalData.items.map((item, idx) => (
-                          <div key={idx} className="flex justify-between items-center">
-                            <div>
-                              <p className="font-black text-slate-900 text-sm uppercase">{item.product_name}</p>
-                              <p className="text-[10px] font-bold text-slate-400">{item.weight_kg}kg × ₱{(item.subtotal / item.weight_kg).toFixed(2)}</p>
+                        <div className="space-y-4">
+                          {modalData.items.map((item, idx) => (
+                            <div key={idx} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-transparent hover:border-slate-200 transition-all">
+                              <div className="space-y-1">
+                                <p className="font-black text-slate-900 uppercase tracking-tight">{item.product_name}</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{item.weight_kg}kg × ₱{(item.subtotal / item.weight_kg).toFixed(2)}</p>
+                              </div>
+                              <span className="text-lg font-black text-slate-900 tracking-tight">₱{item.subtotal.toFixed(2)}</span>
                             </div>
-                            <span className="font-black text-slate-900">₱{item.subtotal.toFixed(2)}</span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Right Side: Info & Totals */}
+                      <div className="lg:col-span-5 space-y-8">
+                        {/* Summary Info */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-slate-50 p-5 rounded-[1.5rem] border border-slate-100">
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Date</p>
+                            <p className="font-black text-slate-900 text-sm leading-tight">{new Date(modalData.transaction.created_at + ' UTC').toLocaleString()}</p>
                           </div>
-                        ))}
+                          <div className="bg-slate-50 p-5 rounded-[1.5rem] border border-slate-100">
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Cashier</p>
+                            <p className="font-black text-slate-900 text-sm leading-tight truncate">{modalData.transaction.cashier_name || 'System'}</p>
+                          </div>
+                          {modalData.transaction.customer_name && (
+                            <div className="bg-brand-50/50 p-5 rounded-[1.5rem] border border-brand-100 col-span-2 flex items-center gap-4">
+                              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-brand-600 font-black shadow-sm shrink-0 uppercase">
+                                {modalData.transaction.customer_name.charAt(0)}
+                              </div>
+                              <div>
+                                <p className="text-[9px] font-black text-brand-400 uppercase tracking-widest mb-0.5">Customer Name</p>
+                                <p className="font-black text-brand-900 text-base uppercase tracking-tight leading-none">{modalData.transaction.customer_name}</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Totals Section */}
+                        <div className="bg-slate-900 rounded-[2rem] p-8 text-white relative overflow-hidden group">
+                          <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/10 rounded-full -mr-16 -mt-16 blur-3xl transition-all group-hover:bg-brand-500/20"></div>
+                          
+                          <div className="space-y-5 relative z-10">
+                            <div className="flex justify-between items-center text-slate-400">
+                              <span className="text-[10px] font-black uppercase tracking-widest">Subtotal Amount</span>
+                              <span className="font-bold text-lg">₱{modalData.transaction.total_amount.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-slate-400">
+                              <span className="text-[10px] font-black uppercase tracking-widest">Amount Received</span>
+                              <span className="font-bold text-lg">₱{modalData.transaction.payment_received.toFixed(2)}</span>
+                            </div>
+                            
+                            {modalData.transaction.status !== 'completed' && (
+                              <div className="pt-5 border-t border-white/10">
+                                <div className="flex justify-between items-center text-rose-400">
+                                  <span className="text-[10px] font-black uppercase tracking-widest">Remaining Balance</span>
+                                  <span className="text-xl font-black">₱{(modalData.transaction.total_amount - (modalData.transaction.paid_amount || 0)).toFixed(2)}</span>
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="pt-5 border-t border-white/20 flex justify-between items-end">
+                              <div>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] block mb-1">Total Change</span>
+                                <span className="text-4xl font-black text-emerald-400 tracking-tighter leading-none">₱{modalData.transaction.change_amount.toFixed(2)}</span>
+                              </div>
+                              <div className="bg-emerald-500/10 text-emerald-500 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest">
+                                {modalData.transaction.status === 'completed' ? 'Fully Paid' : 'Credit'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Dangerous Actions */}
+                        <div className="pt-4 border-t border-slate-50">
+                          <button 
+                            onClick={() => handleDeleteTransaction(modalData.transaction)}
+                            className="w-full flex items-center justify-center gap-3 py-4 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-2xl transition-all font-black uppercase tracking-widest text-xs group"
+                          >
+                            <svg className="w-5 h-5 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            Delete Transaction
+                          </button>
+                          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest text-center mt-3">
+                            * Requires Admin Password Verification
+                          </p>
+                        </div>
                       </div>
                     </div>
-
-                    {/* Totals */}
-                    <div className="bg-slate-900 rounded-3xl p-6 text-white space-y-4">
-                      <div className="flex justify-between items-center text-slate-400">
-                        <span className="text-[10px] font-black uppercase tracking-widest">Subtotal</span>
-                        <span className="font-bold">₱{modalData.transaction.total_amount.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-slate-400">
-                        <span className="text-[10px] font-black uppercase tracking-widest">Received</span>
-                        <span className="font-bold">₱{modalData.transaction.payment_received.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between items-center border-t border-white/10 pt-4">
-                        <span className="text-xs font-black uppercase tracking-widest">Total Change</span>
-                        <span className="text-2xl font-black text-emerald-400">₱{modalData.transaction.change_amount.toFixed(2)}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-8 pt-6 border-t border-slate-50 flex gap-3 shrink-0">
-                    <button 
-                      onClick={() => modalData.onDownload(modalData.transaction)}
-                      className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-600 font-black py-4 rounded-xl transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-[10px]"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                      Download PDF
-                    </button>
-                    <button 
-                      onClick={() => modalData.onReprint(modalData.transaction.id)}
-                      className="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-black py-4 rounded-xl transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-[10px]"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                      Reprint Receipt
-                    </button>
                   </div>
                 </div>
               </div>

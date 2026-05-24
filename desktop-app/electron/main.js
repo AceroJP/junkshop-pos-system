@@ -135,6 +135,40 @@ ipcMain.handle('get-transaction-items', async (event, transactionId) => {
     }
 });
 
+ipcMain.handle('verify-admin-password', async (event, password) => {
+    return await auth.verifyAdminPassword(password);
+});
+
+ipcMain.handle('delete-transaction', async (event, transactionId) => {
+    try {
+        // 1. Get transaction details for balance reversal
+        const transaction = await db.get('SELECT * FROM transactions WHERE id = ?', [transactionId]);
+        if (!transaction) return { success: false, error: 'Transaction not found' };
+
+        // 2. If it was a credit transaction, reverse the balance from the seller
+        if (transaction.seller_id && transaction.status !== 'completed') {
+            const remainingBalance = transaction.total_amount - (transaction.paid_amount || 0);
+            if (remainingBalance > 0) {
+                await db.run(
+                    'UPDATE sellers SET total_balance_owed = total_balance_owed - ? WHERE id = ?',
+                    [remainingBalance, transaction.seller_id]
+                );
+            }
+        }
+
+        // 3. Delete items first (foreign key)
+        await db.run('DELETE FROM transaction_items WHERE transaction_id = ?', [transactionId]);
+        
+        // 4. Delete the transaction
+        await db.run('DELETE FROM transactions WHERE id = ?', [transactionId]);
+
+        return { success: true };
+    } catch (err) {
+        console.error('Delete transaction failed', err);
+        return { success: false, error: err.message };
+    }
+});
+
 ipcMain.handle('reprint-receipt', async (event, transactionId) => {
     try {
         const transaction = await db.get('SELECT * FROM transactions WHERE id = ?', [transactionId]);
@@ -222,15 +256,29 @@ ipcMain.handle('save-transaction', async (event, transactionData) => {
 // Sellers Handlers
 ipcMain.handle('get-sellers', async (event, { search = '', filter = 'all' }) => {
     try {
-        let sql = 'SELECT * FROM sellers WHERE total_balance_owed > 0';
+        let sql = `
+            SELECT s.*, 
+            COALESCE((SELECT SUM(paid_amount) FROM transactions WHERE seller_id = s.id AND status IN ('unpaid', 'partial')), 0) as total_partial_paid
+            FROM sellers s
+        `;
+        
         const params = [];
+        let whereClauses = [];
+
+        if (filter === 'balance') {
+            whereClauses.push('s.total_balance_owed > 0');
+        }
 
         if (search) {
-            sql += ' AND name LIKE ?';
+            whereClauses.push('s.name LIKE ?');
             params.push(`%${search}%`);
         }
 
-        sql += ' ORDER BY total_balance_owed DESC, name ASC';
+        if (whereClauses.length > 0) {
+            sql += ' WHERE ' + whereClauses.join(' AND ');
+        }
+
+        sql += ' ORDER BY s.total_balance_owed DESC, s.name ASC';
         return await db.all(sql, params);
     } catch (err) {
         console.error('Fetch sellers failed', err);
@@ -252,6 +300,15 @@ ipcMain.handle('get-seller-transactions', async (event, id) => {
         return await db.all('SELECT * FROM transactions WHERE seller_id = ? ORDER BY created_at DESC', [id]);
     } catch (err) {
         console.error('Fetch seller transactions failed', err);
+        return [];
+    }
+});
+
+ipcMain.handle('get-payments', async (event, sellerId) => {
+    try {
+        return await db.all('SELECT * FROM payments WHERE seller_id = ? ORDER BY created_at DESC', [sellerId]);
+    } catch (err) {
+        console.error('Fetch payments failed', err);
         return [];
     }
 });
@@ -358,21 +415,40 @@ ipcMain.handle('update-seller-info', async (event, { id, contact_number, address
     }
 });
 
-ipcMain.handle('print-statement', async (event, sellerId) => {
+ipcMain.handle('delete-seller', async (event, sellerId) => {
+    try {
+        // First check if they have any balance (safety check)
+        const seller = await db.get('SELECT total_balance_owed FROM sellers WHERE id = ?', [sellerId]);
+        if (!seller) {
+            return { success: false, error: 'Seller not found' };
+        }
+        if (seller.total_balance_owed > 0) {
+            return { success: false, error: 'Cannot delete seller with outstanding balance' };
+        }
+
+        // Totally delete from database:
+        // 1. Delete associated payments
+        await db.run('DELETE FROM payments WHERE seller_id = ?', [sellerId]);
+        
+        // 2. Unlink transactions (we keep the financial records but remove the seller association)
+        await db.run('UPDATE transactions SET seller_id = NULL WHERE seller_id = ?', [sellerId]);
+
+        // 3. Finally delete the seller
+        await db.run('DELETE FROM sellers WHERE id = ?', [sellerId]);
+        
+        return { success: true };
+    } catch (err) {
+        console.error('Delete seller failed', err);
+        return { success: false, error: err.message };
+    }
+});
+
+ipcMain.handle('get-seller-history', async (event, sellerName) => {
     try {
         return await printer.printStatement(sellerId);
     } catch (err) {
         console.error('Print statement failed', err);
         return { success: false, error: err.message };
-    }
-});
-
-ipcMain.handle('get-payments', async (event, sellerId) => {
-    try {
-        return await db.all('SELECT * FROM payments WHERE seller_id = ? ORDER BY created_at DESC', [sellerId]);
-    } catch (err) {
-        console.error('Fetch payments failed', err);
-        return [];
     }
 });
 

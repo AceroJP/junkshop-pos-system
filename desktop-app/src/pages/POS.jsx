@@ -10,9 +10,27 @@ const POS = ({ user, openModal }) => {
     const [customerName, setCustomerName] = useState('');
     const [loading, setLoading] = useState(false);
 
+    // Cashier selection
+    const [availableCashiers, setAvailableCashiers] = useState([]);
+    const [selectedCashier, setSelectedCashier] = useState('');
+
     useEffect(() => {
         loadProducts();
+        loadCashiers();
     }, []);
+
+    const loadCashiers = async () => {
+        try {
+            const settings = await window.electron.getSettings();
+            const cashierList = settings.cashiers ? JSON.parse(settings.cashiers) : [];
+            setAvailableCashiers(cashierList);
+            // Default is the owner name (from user prop)
+            setSelectedCashier(user.full_name);
+        } catch (err) {
+            console.error('Failed to load cashiers', err);
+            setSelectedCashier(user.full_name);
+        }
+    };
 
     const loadProducts = async () => {
         const data = await window.electron.getProducts();
@@ -144,6 +162,7 @@ const POS = ({ user, openModal }) => {
                 change_amount: 0,
                 items: cart,
                 cashier_id: user.id,
+                cashier_name: selectedCashier || user.full_name, // Store the selected cashier name
                 customer_name: customerName.trim() || null,
                 status: status // 'completed' or 'unpaid'
             });
@@ -246,6 +265,28 @@ const POS = ({ user, openModal }) => {
 
             {/* Cart Sidebar */}
             <div className="w-full lg:w-72 xl:w-80 2xl:w-96 bg-white rounded-[2rem] lg:rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col overflow-hidden shrink-0 h-[500px] lg:h-auto">
+                {/* Cashier Selection */}
+                <div className="px-6 lg:px-8 py-6 bg-slate-900 border-b border-white/5">
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Operating Cashier</label>
+                        <div className="relative">
+                            <select 
+                                value={selectedCashier}
+                                onChange={(e) => setSelectedCashier(e.target.value)}
+                                className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-2.5 text-sm font-bold text-white focus:border-brand-500 focus:ring-4 focus:ring-brand-500/5 outline-none transition-all appearance-none cursor-pointer"
+                            >
+                                <option value={user.full_name}>{user.full_name} (Owner)</option>
+                                {availableCashiers.map((name, idx) => (
+                                    <option key={idx} value={name} className="text-slate-900">{name}</option>
+                                ))}
+                            </select>
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Seller Information (Optional) */}
                 <div className="px-6 lg:px-8 py-6 bg-slate-50 border-b border-slate-100">
                     <div className="space-y-3">

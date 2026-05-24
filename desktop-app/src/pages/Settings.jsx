@@ -12,9 +12,48 @@ const Settings = ({ shopSettings, onSettingsUpdate }) => {
     const [shopName, setShopName] = useState(shopSettings.shop_name || '');
     const [shopLogo, setShopLogo] = useState(shopSettings.shop_logo || '');
 
+    // Cashier Management State
+    const [cashiers, setCashiers] = useState([]);
+    const [newCashier, setNewCashier] = useState('');
+
     useEffect(() => {
         loadPrinters();
+        loadCashiers();
     }, []);
+
+    const loadCashiers = async () => {
+        try {
+            const settings = await window.electron.getSettings();
+            const cashierList = settings.cashiers ? JSON.parse(settings.cashiers) : [];
+            setCashiers(cashierList);
+        } catch (err) {
+            console.error('Failed to load cashiers', err);
+        }
+    };
+
+    const handleAddCashier = async () => {
+        if (!newCashier.trim()) return;
+        const updatedList = [...cashiers, newCashier.trim()];
+        try {
+            await window.electron.saveSetting('cashiers', JSON.stringify(updatedList));
+            setCashiers(updatedList);
+            setNewCashier('');
+            if (onSettingsUpdate) onSettingsUpdate();
+        } catch (err) {
+            Swal.fire('Error', 'Failed to add cashier', 'error');
+        }
+    };
+
+    const handleRemoveCashier = async (index) => {
+        const updatedList = cashiers.filter((_, i) => i !== index);
+        try {
+            await window.electron.saveSetting('cashiers', JSON.stringify(updatedList));
+            setCashiers(updatedList);
+            if (onSettingsUpdate) onSettingsUpdate();
+        } catch (err) {
+            Swal.fire('Error', 'Failed to remove cashier', 'error');
+        }
+    };
 
     const loadPrinters = async () => {
         setLoadingPrinters(true);
@@ -173,6 +212,60 @@ const Settings = ({ shopSettings, onSettingsUpdate }) => {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                {/* Cashier Management Configuration */}
+                <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
+                    <div className="p-8 lg:p-10 border-b border-slate-50 bg-slate-50/50 flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-100">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Cashier Management</h3>
+                                <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Add or remove staff names</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-8 lg:p-10 space-y-6">
+                        <div className="flex gap-4">
+                            <input 
+                                type="text" 
+                                value={newCashier}
+                                onChange={(e) => setNewCashier(e.target.value)}
+                                onKeyPress={(e) => e.key === 'Enter' && handleAddCashier()}
+                                className="flex-1 px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all outline-none font-bold text-slate-900"
+                                placeholder="Enter cashier name..."
+                            />
+                            <button 
+                                onClick={handleAddCashier}
+                                className="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-xl shadow-indigo-100 transition-all uppercase tracking-widest text-xs"
+                            >
+                                Add Cashier
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {cashiers.map((name, index) => (
+                                <div key={index} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 group">
+                                    <span className="font-bold text-slate-900">{name}</span>
+                                    <button 
+                                        onClick={() => handleRemoveCashier(index)}
+                                        className="p-2 text-slate-300 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+
+                        {cashiers.length === 0 && (
+                            <div className="py-8 text-center bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200">
+                                <p className="text-slate-400 font-bold text-xs uppercase tracking-widest italic">No cashiers added yet</p>
+                            </div>
+                        )}
                     </div>
                 </div>
 

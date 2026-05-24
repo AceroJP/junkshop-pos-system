@@ -48,7 +48,8 @@ const Transactions = ({ shopSettings, openModal }) => {
                     transaction,
                     items,
                     onDownload: handleDownloadPDF,
-                    onReprint: handleReprint
+                    onReprint: handleReprint,
+                    onDelete: loadTransactions // Refresh list after deletion
                 });
             }
         } catch (err) {
