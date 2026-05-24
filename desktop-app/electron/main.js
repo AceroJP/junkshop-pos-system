@@ -119,7 +119,7 @@ ipcMain.handle('toggle-product-status', async (event, id) => {
 // Transaction Handlers
 ipcMain.handle('get-transactions', async () => {
     try {
-        return await db.all('SELECT t.*, u.full_name as cashier_name FROM transactions t LEFT JOIN users u ON t.cashier_id = u.id ORDER BY t.created_at DESC');
+        return await db.all('SELECT t.*, COALESCE(t.cashier_name, u.full_name) as cashier_name FROM transactions t LEFT JOIN users u ON t.cashier_id = u.id ORDER BY t.created_at DESC');
     } catch (err) {
         console.error('Fetch transactions failed', err);
         return [];
@@ -171,7 +171,7 @@ ipcMain.handle('delete-transaction', async (event, transactionId) => {
 
 ipcMain.handle('reprint-receipt', async (event, transactionId) => {
     try {
-        const transaction = await db.get('SELECT * FROM transactions WHERE id = ?', [transactionId]);
+        const transaction = await db.get('SELECT t.*, COALESCE(t.cashier_name, u.full_name) as cashier_name FROM transactions t LEFT JOIN users u ON t.cashier_id = u.id WHERE t.id = ?', [transactionId]);
         const items = await db.all('SELECT ti.*, p.name FROM transaction_items ti JOIN products p ON ti.product_id = p.id WHERE ti.transaction_id = ?', [transactionId]);
         
         // Map items to the format expected by printer service
@@ -190,7 +190,7 @@ ipcMain.handle('reprint-receipt', async (event, transactionId) => {
 });
 
 ipcMain.handle('save-transaction', async (event, transactionData) => {
-    const { total_amount, payment_received, change_amount, items, cashier_id, customer_name, status, seller_id } = transactionData;
+    const { total_amount, payment_received, change_amount, items, cashier_id, cashier_name, customer_name, status, seller_id } = transactionData;
     const transaction_number = `TXN-${Date.now()}`;
     const paymentStatus = status || 'completed';
 
@@ -209,8 +209,8 @@ ipcMain.handle('save-transaction', async (event, transactionData) => {
         }
 
         const txn = await db.run(
-            'INSERT INTO transactions (transaction_number, cashier_id, customer_name, seller_id, total_amount, payment_received, change_amount, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [transaction_number, cashier_id, customer_name || null, finalSellerId || null, total_amount, payment_received, change_amount, paymentStatus]
+            'INSERT INTO transactions (transaction_number, cashier_id, cashier_name, customer_name, seller_id, total_amount, payment_received, change_amount, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [transaction_number, cashier_id, cashier_name || null, customer_name || null, finalSellerId || null, total_amount, payment_received, change_amount, paymentStatus]
         );
 
         const transactionId = txn.id;
@@ -489,10 +489,13 @@ ipcMain.handle('get-report-stats', async (event, { period }) => {
             dateFilter = "1=1"; // Overall
         }
 
-        // 1. Total Purchases
+        // 1. Total Purchases for period
         const purchases = await db.get(`SELECT SUM(total_amount) as total FROM transactions WHERE ${dateFilter}`);
         
-        // 2. Sales by Product (Chart Data)
+        // 2. Grand Total (Overall Purchases regardless of period)
+        const grandTotal = await db.get(`SELECT SUM(total_amount) as total FROM transactions`);
+
+        // 3. Sales by Product (Chart Data)
         const salesByProduct = await db.all(`
             SELECT p.name, SUM(ti.weight_kg) as total_weight, SUM(ti.subtotal) as total_amount 
             FROM transaction_items ti 
@@ -503,20 +506,37 @@ ipcMain.handle('get-report-stats', async (event, { period }) => {
             ORDER BY total_amount DESC
         `);
 
-        // 3. Transactions for the period
+        // 4. Transactions for the period
         const transactions = await db.all(`
-            SELECT t.*, u.full_name as cashier_name 
+            SELECT t.*, COALESCE(t.cashier_name, u.full_name) as cashier_name 
             FROM transactions t 
             LEFT JOIN users u ON t.cashier_id = u.id 
             WHERE ${dateFilter.replace(/created_at/g, 't.created_at')}
             ORDER BY t.created_at DESC
         `);
 
+        // 5. Total Balance Owed (Current outstanding debt)
+        const balanceOwed = await db.get(`SELECT SUM(total_balance_owed) as total FROM sellers`);
+
+        // 6. Credit Summary (List of sellers with balance)
+        const creditSummary = await db.all(`
+            SELECT 
+                name, 
+                total_balance_owed,
+                (SELECT SUM(paid_amount) FROM transactions WHERE seller_id = sellers.id AND status = 'partial') as total_partial_paid
+            FROM sellers 
+            WHERE total_balance_owed > 0
+            ORDER BY total_balance_owed DESC
+        `);
+
         return {
             success: true,
             totalPurchases: purchases.total || 0,
+            grandTotal: grandTotal.total || 0,
+            balanceOwed: balanceOwed.total || 0,
             salesByProduct,
-            transactions
+            transactions,
+            creditSummary
         };
     } catch (err) {
         console.error('Report stats failed', err);

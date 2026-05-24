@@ -21,6 +21,7 @@ function App() {
   const [appVersion, setAppVersion] = useState('');
   const [activeModal, setActiveModal] = useState(null); // 'product', 'receipt', 'weight', 'checkout'
   const [modalData, setModalData] = useState(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const handleDeleteTransaction = async (transaction) => {
     const { value: password } = await Swal.fire({
@@ -250,10 +251,40 @@ function App() {
         </div>
       )}
 
+      {/* Mobile Header */}
+      <div className="lg:hidden h-20 bg-white border-b border-slate-100 flex items-center justify-between px-6 shrink-0 z-[60]">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-white border border-slate-100 rounded-xl flex items-center justify-center shadow-sm overflow-hidden">
+            {shopSettings.shop_logo ? (
+              <img src={shopSettings.shop_logo} className="w-full h-full object-cover" />
+            ) : (
+              <img src={logo} className="w-full h-full object-contain p-1" alt="Logo" />
+            )}
+          </div>
+          <h1 className="text-lg font-black text-slate-900 uppercase tracking-tight truncate max-w-[150px]">{shopSettings.shop_name}</h1>
+        </div>
+        <button 
+          onClick={() => setIsSidebarOpen(true)}
+          className="p-3 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-colors"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Sidebar Backdrop (Mobile) */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[70] lg:hidden animate-fade-in"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className={`w-full lg:w-64 xl:w-72 bg-white border-b lg:border-b-0 lg:border-r border-slate-100 flex flex-col shrink-0 transition-all duration-300 ${activeModal ? 'blur-sm grayscale-[0.2] pointer-events-none' : ''}`}>
-        <div className="h-20 lg:h-24 flex items-center px-6 lg:px-8 gap-4 border-b border-slate-50">
-          <div className="w-10 h-10 lg:w-12 lg:h-12 bg-white border border-slate-100 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-100 overflow-hidden">
+      <aside className={`fixed inset-y-0 left-0 w-72 lg:w-64 xl:w-72 bg-white border-r border-slate-100 flex flex-col shrink-0 transition-transform duration-300 z-[80] lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} ${activeModal ? 'blur-sm grayscale-[0.2] pointer-events-none' : ''}`}>
+        <div className="h-24 flex items-center px-8 gap-4 border-b border-slate-50 shrink-0">
+          <div className="w-12 h-12 bg-white border border-slate-100 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-100 overflow-hidden">
             {shopSettings.shop_logo ? (
               <img src={shopSettings.shop_logo} className="w-full h-full object-cover" />
             ) : (
@@ -261,23 +292,30 @@ function App() {
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <h1 className="text-lg lg:text-xl font-black text-slate-900 uppercase tracking-tight leading-none truncate">{shopSettings.shop_name}</h1>
-            <span className="text-brand-600 font-black text-[9px] lg:text-[10px] uppercase tracking-[0.3em]">POS System</span>
+            <h1 className="text-xl font-black text-slate-900 uppercase tracking-tight leading-none truncate">{shopSettings.shop_name}</h1>
+            <span className="text-brand-600 font-black text-[10px] uppercase tracking-[0.3em]">POS System</span>
           </div>
+          {/* Close button for mobile sidebar */}
+          <button 
+            onClick={() => setIsSidebarOpen(false)}
+            className="lg:hidden p-2 text-slate-400 hover:text-rose-500 transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
         </div>
 
-        <nav className="flex lg:flex-col overflow-x-auto lg:overflow-x-visible p-4 lg:p-6 gap-2 lg:space-y-2 no-scrollbar">
+        <nav className="flex-1 overflow-y-auto p-6 space-y-2 no-scrollbar">
           <button 
-            onClick={() => setCurrentPage('POS')} 
-            className={`flex items-center gap-3 px-4 py-2.5 lg:py-3.5 rounded-2xl transition-all duration-200 font-bold shrink-0 lg:w-full ${currentPage === 'POS' ? 'bg-brand-600 text-white shadow-xl shadow-brand-100' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
+            onClick={() => { setCurrentPage('POS'); setIsSidebarOpen(false); }} 
+            className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200 font-bold w-full ${currentPage === 'POS' ? 'bg-brand-600 text-white shadow-xl shadow-brand-100' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
             <span className="whitespace-nowrap">POS Terminal</span>
           </button>
 
           <button 
-            onClick={() => setCurrentPage('Transactions')} 
-            className={`flex items-center gap-3 px-4 py-2.5 lg:py-3.5 rounded-2xl transition-all duration-200 font-bold shrink-0 lg:w-full ${currentPage === 'Transactions' ? 'bg-brand-600 text-white shadow-xl shadow-brand-100' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
+            onClick={() => { setCurrentPage('Transactions'); setIsSidebarOpen(false); }} 
+            className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200 font-bold w-full ${currentPage === 'Transactions' ? 'bg-brand-600 text-white shadow-xl shadow-brand-100' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
             <span className="whitespace-nowrap">Transactions</span>
@@ -286,29 +324,29 @@ function App() {
           {user.role === 'admin' && (
             <>
               <button 
-                onClick={() => setCurrentPage('Inventory')} 
-                className={`flex items-center gap-3 px-4 py-2.5 lg:py-3.5 rounded-2xl transition-all duration-200 font-bold shrink-0 lg:w-full ${currentPage === 'Inventory' ? 'bg-brand-600 text-white shadow-xl shadow-brand-100' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
+                onClick={() => { setCurrentPage('Inventory'); setIsSidebarOpen(false); }} 
+                className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200 font-bold w-full ${currentPage === 'Inventory' ? 'bg-brand-600 text-white shadow-xl shadow-brand-100' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
                 <span className="whitespace-nowrap">Inventory</span>
               </button>
               <button 
-                onClick={() => setCurrentPage('Sellers')} 
-                className={`flex items-center gap-3 px-4 py-2.5 lg:py-3.5 rounded-2xl transition-all duration-200 font-bold shrink-0 lg:w-full ${currentPage === 'Sellers' ? 'bg-brand-600 text-white shadow-xl shadow-brand-100' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
+                onClick={() => { setCurrentPage('Sellers'); setIsSidebarOpen(false); }} 
+                className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200 font-bold w-full ${currentPage === 'Sellers' ? 'bg-brand-600 text-white shadow-xl shadow-brand-100' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                 <span className="whitespace-nowrap">Credit Tracker</span>
               </button>
               <button 
-                onClick={() => setCurrentPage('Reports')} 
-                className={`flex items-center gap-3 px-4 py-2.5 lg:py-3.5 rounded-2xl transition-all duration-200 font-bold shrink-0 lg:w-full ${currentPage === 'Reports' ? 'bg-brand-600 text-white shadow-xl shadow-brand-100' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
+                onClick={() => { setCurrentPage('Reports'); setIsSidebarOpen(false); }} 
+                className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200 font-bold w-full ${currentPage === 'Reports' ? 'bg-brand-600 text-white shadow-xl shadow-brand-100' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
                 <span className="whitespace-nowrap">Reports</span>
               </button>
               <button 
-                onClick={() => setCurrentPage('Settings')} 
-                className={`flex items-center gap-3 px-4 py-2.5 lg:py-3.5 rounded-2xl transition-all duration-200 font-bold shrink-0 lg:w-full ${currentPage === 'Settings' ? 'bg-brand-600 text-white shadow-xl shadow-brand-100' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
+                onClick={() => { setCurrentPage('Settings'); setIsSidebarOpen(false); }} 
+                className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200 font-bold w-full ${currentPage === 'Settings' ? 'bg-brand-600 text-white shadow-xl shadow-brand-100' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                 <span className="whitespace-nowrap">Settings</span>
@@ -318,7 +356,7 @@ function App() {
         </nav>
 
         {/* User Profile / Logout */}
-        <div className="p-4 lg:p-6 mt-auto border-t border-slate-50 hidden lg:block">
+        <div className="p-6 mt-auto border-t border-slate-50">
           <div className="bg-slate-50 rounded-[2rem] p-4 flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-brand-100 rounded-xl flex items-center justify-center text-brand-700 font-black shrink-0">
               {user.username.charAt(0).toUpperCase()}

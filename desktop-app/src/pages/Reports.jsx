@@ -8,7 +8,14 @@ import { generateReportPDF } from '../utils/pdfGenerator';
 
 const Reports = ({ shopSettings }) => {
     const [period, setPeriod] = useState('overall');
-    const [stats, setStats] = useState({ totalPurchases: 0, salesByProduct: [], transactions: [] });
+    const [stats, setStats] = useState({ 
+        totalPurchases: 0, 
+        grandTotal: 0, 
+        balanceOwed: 0, 
+        salesByProduct: [], 
+        transactions: [],
+        creditSummary: [] 
+    });
     const [loading, setLoading] = useState(true);
     const [isMounted, setIsMounted] = useState(false);
     const [showExportDropdown, setShowExportDropdown] = useState(false);
@@ -35,9 +42,12 @@ const Reports = ({ shopSettings }) => {
             const result = await window.electron.getReportStats({ period });
             if (result.success) {
                 setStats({
-                    totalPurchases: result.totalPurchases ?? result.totalIncome ?? 0,
+                    totalPurchases: result.totalPurchases || 0,
+                    grandTotal: result.grandTotal || 0,
+                    balanceOwed: result.balanceOwed || 0,
                     salesByProduct: result.salesByProduct || [],
-                    transactions: result.transactions || []
+                    transactions: result.transactions || [],
+                    creditSummary: result.creditSummary || []
                 });
             }
         } catch (err) {
@@ -112,7 +122,7 @@ const Reports = ({ shopSettings }) => {
                     <p className="text-slate-400 font-bold uppercase tracking-[0.2em] text-[9px] lg:text-[10px]">Analyze sales & performance</p>
                 </div>
                 
-                <div className="flex flex-wrap gap-2 lg:gap-3 relative export-dropdown-container">
+                <div className="relative inline-block export-dropdown-container">
                     <button 
                         onClick={() => setShowExportDropdown(!showExportDropdown)}
                         className={`bg-brand-600 hover:bg-brand-700 text-white font-black px-6 py-3 rounded-xl transition-all text-[10px] lg:text-xs uppercase tracking-widest flex items-center justify-center gap-3 shadow-lg shadow-brand-100 ${showExportDropdown ? 'ring-4 ring-brand-100' : ''}`}
@@ -123,7 +133,7 @@ const Reports = ({ shopSettings }) => {
                     </button>
 
                     {showExportDropdown && (
-                        <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 py-3 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="absolute top-full left-0 xl:right-0 xl:left-auto mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 py-3 z-[100] animate-in fade-in slide-in-from-top-2 duration-200">
                             <div className="px-4 py-2 mb-2 border-b border-slate-50">
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Select Period</p>
                             </div>
@@ -164,12 +174,28 @@ const Reports = ({ shopSettings }) => {
                         </div>
                     </div>
 
-                    <div className="bg-slate-900 p-6 lg:p-8 rounded-[1.5rem] lg:rounded-[2rem] text-white space-y-2">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Purchases</p>
-                        <p className="text-3xl lg:text-4xl font-black text-emerald-400 leading-none truncate">
-                            ₱{(stats.totalPurchases || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <div className="bg-slate-900 p-6 lg:p-8 rounded-[1.5rem] lg:rounded-[2rem] text-white space-y-4">
+                        <div className="space-y-1">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Period Purchases</p>
+                            <p className="text-2xl sm:text-3xl lg:text-4xl font-black text-emerald-400 leading-none break-words">
+                                ₱{(stats.totalPurchases || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                        </div>
+                        <div className="pt-4 border-t border-white/10 space-y-1">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Overall Total Purchases</p>
+                            <p className="text-xl lg:text-2xl font-black text-white leading-none">
+                                ₱{(stats.grandTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                        </div>
+                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest pt-1">Period: {period}</p>
+                    </div>
+
+                    <div className="bg-rose-950 p-6 lg:p-8 rounded-[1.5rem] lg:rounded-[2rem] text-white space-y-2 border border-rose-900/50">
+                        <p className="text-[10px] font-black text-rose-400 uppercase tracking-widest">Total Balance Owed</p>
+                        <p className="text-3xl lg:text-4xl font-black text-rose-400 leading-none break-words">
+                            ₱{(stats.balanceOwed || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </p>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pt-2">For {period} period</p>
+                        <p className="text-[10px] font-bold text-rose-500/50 uppercase tracking-widest pt-2">Current outstanding credit</p>
                     </div>
                 </div>
 
@@ -241,6 +267,62 @@ const Reports = ({ shopSettings }) => {
                             )}
                         </div>
                     </div>
+                </div>
+            </div>
+
+            {/* Credit Summary Table */}
+            <div className="bg-white rounded-[1.5rem] lg:rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
+                <div className="p-6 lg:p-8 border-b border-slate-50 flex items-center justify-between">
+                    <h3 className="text-xs lg:text-sm font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
+                        <span className="w-2 h-2 bg-rose-500 rounded-full"></span>
+                        Credit & Balance Summary
+                    </h3>
+                    <span className="text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-full">{stats.creditSummary.length} Active Credits</span>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full min-w-[600px]">
+                        <thead className="bg-slate-50/50 border-b border-slate-100">
+                            <tr>
+                                <th className="px-6 lg:px-10 py-4 lg:py-6 text-left text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Seller Name</th>
+                                <th className="px-6 lg:px-10 py-4 lg:py-6 text-right text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Partial Paid</th>
+                                <th className="px-6 lg:px-10 py-4 lg:py-6 text-right text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Balance Owed</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                            {loading ? (
+                                <tr>
+                                    <td colSpan="3" className="px-10 py-10 text-center">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-brand-500 mx-auto"></div>
+                                    </td>
+                                </tr>
+                            ) : stats.creditSummary.length === 0 ? (
+                                <tr>
+                                    <td colSpan="3" className="px-10 py-16 text-center">
+                                        <div className="flex flex-col items-center gap-3 opacity-20">
+                                            <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            <p className="font-black uppercase tracking-[0.2em] text-[10px]">No outstanding credits</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : (
+                                stats.creditSummary.map((c, idx) => (
+                                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors group text-[11px] lg:text-sm">
+                                        <td className="px-6 lg:px-10 py-4 lg:py-6">
+                                            <span className="font-black text-slate-900 uppercase tracking-tight">{c.name}</span>
+                                        </td>
+                                        <td className="px-6 lg:px-10 py-4 lg:py-6 text-right">
+                                            <span className="font-bold text-slate-400 italic">
+                                                {c.total_partial_paid > 0 ? `₱${c.total_partial_paid.toFixed(2)}` : '—'}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 lg:px-10 py-4 lg:py-6 text-right">
+                                            <span className="font-black text-rose-600 text-sm lg:text-lg">₱{c.total_balance_owed.toFixed(2)}</span>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 

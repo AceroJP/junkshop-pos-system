@@ -62,6 +62,7 @@ function initializeDatabase() {
             // Migrations for Credit Management
             const migrations = [
                 "ALTER TABLE transactions ADD COLUMN customer_name TEXT",
+                "ALTER TABLE transactions ADD COLUMN cashier_name TEXT",
                 "ALTER TABLE transactions ADD COLUMN seller_id INTEGER",
                 "ALTER TABLE transactions ADD COLUMN paid_amount REAL DEFAULT 0",
                 "ALTER TABLE transactions ADD COLUMN paid_at TIMESTAMP",

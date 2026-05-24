@@ -207,15 +207,15 @@ const Products = ({ openModal }) => {
             </div>
 
             {/* Inventory Table */}
-            <div className="bg-white rounded-[2rem] lg:rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
-                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
-                    <table className="w-full min-w-[800px] lg:min-w-full">
+            <div className="bg-white rounded-[1.5rem] lg:rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
+                <div className="overflow-x-auto custom-scrollbar">
+                    <table className="w-full min-w-[900px]">
                         <thead className="bg-slate-50/50 border-b border-slate-100">
                             <tr>
-                                <th className="px-6 lg:px-10 py-4 lg:py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Item Details</th>
-                                <th className="px-6 lg:px-10 py-4 lg:py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Price / kg</th>
-                                <th className="px-6 lg:px-10 py-4 lg:py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Status</th>
-                                <th className="sticky right-0 bg-slate-50 lg:bg-transparent px-6 lg:px-10 py-4 lg:py-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] shadow-[-12px_0_15px_-3px_rgba(0,0,0,0.02)] lg:shadow-none">Management</th>
+                                <th className="px-4 lg:px-10 py-4 lg:py-6 text-left text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-[30%]">Item Details</th>
+                                <th className="px-4 lg:px-10 py-4 lg:py-6 text-left text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-[15%]">Price / kg</th>
+                                <th className="px-4 lg:px-10 py-4 lg:py-6 text-left text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-[15%]">Status</th>
+                                <th className="px-4 lg:px-10 py-4 lg:py-6 text-center text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-[40%] sticky right-0 bg-slate-50/95 backdrop-blur-sm shadow-[-10px_0_15px_-3px_rgba(0,0,0,0.05)]">Management</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
@@ -231,51 +231,51 @@ const Products = ({ openModal }) => {
                             ) : (
                                 filteredProducts.map(product => (
                                     <tr key={product.id} className="hover:bg-slate-50/50 transition-colors group">
-                                        <td className="px-6 lg:px-10 py-4 lg:py-6">
-                                            <div className="flex items-center gap-4 lg:gap-6">
+                                        <td className="px-4 lg:px-10 py-4 lg:py-6">
+                                            <div className="flex items-center gap-3 lg:gap-6">
                                                 <div className="w-10 h-10 lg:w-14 lg:h-14 bg-slate-100 rounded-xl lg:rounded-2xl flex items-center justify-center text-slate-300 overflow-hidden shrink-0">
                                                     {product.image_path ? <img src={product.image_path} alt="" className="w-full h-full object-cover" /> : <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}
                                                 </div>
-                                                <span className="font-black text-slate-900 uppercase tracking-tight text-sm lg:text-lg truncate max-w-[150px] lg:max-w-none">{product.name}</span>
+                                                <span className="font-black text-slate-900 uppercase tracking-tight text-xs lg:text-lg truncate max-w-[120px] lg:max-w-none">{product.name}</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 lg:px-10 py-4 lg:py-6">
+                                        <td className="px-4 lg:px-10 py-4 lg:py-6">
                                             <div className="flex flex-col">
                                                 <span className="font-black text-brand-600 text-sm lg:text-lg">₱{product.price_per_kg.toFixed(2)}</span>
-                                                <span className="text-[9px] lg:text-[10px] font-bold text-slate-400 uppercase tracking-widest">per kg</span>
+                                                <span className="text-[8px] lg:text-[10px] font-bold text-slate-400 uppercase tracking-widest">per kg</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 lg:px-10 py-4 lg:py-6">
-                                            <span className={`px-3 lg:px-4 py-1.5 lg:py-2 rounded-lg lg:rounded-xl text-[9px] lg:text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-2 ${product.is_active ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-500'}`}>
+                                        <td className="px-4 lg:px-10 py-4 lg:py-6">
+                                            <span className={`px-2.5 lg:px-4 py-1 lg:py-2 rounded-lg lg:rounded-xl text-[8px] lg:text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-1.5 ${product.is_active ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-500'}`}>
                                                 <span className={`w-1 lg:w-1.5 h-1 lg:h-1.5 rounded-full ${product.is_active ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
                                                 {product.is_active ? 'Active' : 'Inactive'}
                                             </span>
                                         </td>
-                                        <td className="sticky right-0 bg-white group-hover:bg-slate-50/50 px-6 lg:px-10 py-4 lg:py-6 text-right shadow-[-12px_0_15px_-3px_rgba(0,0,0,0.02)] lg:shadow-none transition-colors">
-                                            <div className="flex items-center justify-end gap-2 lg:gap-3 transition-opacity">
+                                        <td className="px-4 lg:px-10 py-4 lg:py-6 text-center sticky right-0 bg-white/95 group-hover:bg-slate-50/95 backdrop-blur-sm shadow-[-10px_0_15px_-3px_rgba(0,0,0,0.05)] transition-colors">
+                                            <div className="flex items-center justify-center gap-1 lg:gap-3">
                                                 <button 
                                                     onClick={() => handleEdit(product)}
-                                                    className="flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-400 rounded-xl hover:bg-brand-50 hover:text-brand-600 transition-all active:scale-95 whitespace-nowrap"
+                                                    className="p-2 lg:px-3 lg:py-2 bg-slate-100 text-slate-400 rounded-lg lg:rounded-xl hover:bg-brand-50 hover:text-brand-600 transition-all active:scale-95 flex items-center gap-1.5"
                                                     title="Edit Product"
                                                 >
-                                                    <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                                    <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Edit</span>
+                                                    <svg className="w-3.5 h-3.5 lg:w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                                    <span className="text-[9px] lg:text-[10px] font-black uppercase tracking-widest hidden lg:inline">Edit</span>
                                                 </button>
                                                 <button 
                                                     onClick={() => toggleStatus(product.id)} 
                                                     title={product.is_active ? 'Deactivate' : 'Activate'} 
-                                                    className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all active:scale-95 whitespace-nowrap ${product.is_active ? 'bg-emerald-50 text-emerald-400 hover:bg-emerald-500 hover:text-white' : 'bg-amber-50 text-amber-400 hover:bg-amber-500 hover:text-white'}`}
+                                                    className={`p-2 lg:px-3 lg:py-2 rounded-lg lg:rounded-xl transition-all active:scale-95 flex items-center gap-1.5 ${product.is_active ? 'bg-emerald-50 text-emerald-400 hover:bg-emerald-500 hover:text-white' : 'bg-amber-50 text-amber-400 hover:bg-amber-500 hover:text-white'}`}
                                                 >
-                                                    <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
-                                                    <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">{product.is_active ? 'Active' : 'Inactive'}</span>
+                                                    <svg className="w-3.5 h-3.5 lg:w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                                                    <span className="text-[9px] lg:text-[10px] font-black uppercase tracking-widest hidden lg:inline">{product.is_active ? 'Active' : 'Inactive'}</span>
                                                 </button>
                                                 <button 
                                                     onClick={() => handleDelete(product.id)}
-                                                    className="flex items-center gap-2 px-3 py-2 bg-rose-50 text-rose-400 rounded-xl hover:bg-rose-500 hover:text-white transition-all active:scale-95 whitespace-nowrap"
+                                                    className="p-2 lg:px-3 lg:py-2 bg-rose-50 text-rose-400 rounded-lg lg:rounded-xl hover:bg-rose-500 hover:text-white transition-all active:scale-95 flex items-center gap-1.5"
                                                     title="Delete Product"
                                                 >
-                                                    <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                    <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Delete</span>
+                                                    <svg className="w-3.5 h-3.5 lg:w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                    <span className="text-[9px] lg:text-[10px] font-black uppercase tracking-widest hidden lg:inline">Delete</span>
                                                 </button>
                                             </div>
                                         </td>

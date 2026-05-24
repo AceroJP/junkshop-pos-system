@@ -212,28 +212,28 @@ const POS = ({ user, openModal }) => {
     };
 
     return (
-        <div className="flex flex-col lg:flex-row h-full gap-6 lg:gap-8 pb-12 lg:pb-0">
+        <div className="flex flex-row h-full gap-4 lg:gap-8 pb-4 lg:pb-0">
             {/* Product Grid */}
-            <div className="flex-1 space-y-6 lg:space-y-8">
+            <div className="flex-1 min-w-0 space-y-4 lg:space-y-8">
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 lg:gap-6">
                     <div className="space-y-1">
-                        <h2 className="text-3xl lg:text-4xl font-black text-slate-900 uppercase tracking-tight leading-none">We Buy</h2>
-                        <p className="text-slate-400 font-bold uppercase tracking-[0.2em] text-[10px]">Select items to add to order</p>
+                        <h2 className="text-2xl lg:text-4xl font-black text-slate-900 uppercase tracking-tight leading-none">We Buy</h2>
+                        <p className="text-slate-400 font-bold uppercase tracking-[0.2em] text-[8px] lg:text-[10px]">Select items to add to order</p>
                     </div>
                     
-                    <div className="bg-white border-2 border-slate-100 h-12 lg:h-14 w-full sm:w-64 lg:w-80 rounded-2xl flex items-center px-4 gap-3 focus-within:ring-4 focus-within:ring-brand-500/10 focus-within:border-brand-500 transition-all">
-                        <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    <div className="bg-white border-2 border-slate-100 h-10 lg:h-14 w-full sm:w-64 lg:w-80 rounded-2xl flex items-center px-4 gap-3 focus-within:ring-4 focus-within:ring-brand-500/10 focus-within:border-brand-500 transition-all">
+                        <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         <input 
                             type="text" 
-                            placeholder="Search items..." 
+                            placeholder="Search..." 
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="bg-transparent outline-none text-sm font-bold w-full text-slate-900 placeholder:text-slate-400" 
+                            className="bg-transparent outline-none text-xs font-bold w-full text-slate-900 placeholder:text-slate-400" 
                         />
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 lg:gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 lg:gap-4">
                     {filteredProducts.length === 0 ? (
                         <div className="col-span-full py-12 lg:py-20 text-center">
                             <div className="flex flex-col items-center gap-4 opacity-20">
@@ -246,75 +246,74 @@ const POS = ({ user, openModal }) => {
                         <button 
                             key={product.id}
                             onClick={() => addToCart(product)}
-                            className={`bg-white p-3 lg:p-4 rounded-[1.25rem] lg:rounded-[1.5rem] border-2 transition-all text-left group ${product.is_active ? 'border-slate-100 hover:border-brand-500 hover:shadow-xl hover:shadow-brand-100' : 'opacity-50 grayscale border-slate-50 cursor-not-allowed'}`}
+                            className={`bg-white p-2 lg:p-4 rounded-xl lg:rounded-[1.5rem] border-2 transition-all text-left group ${product.is_active ? 'border-slate-100 hover:border-brand-500 hover:shadow-xl hover:shadow-brand-100' : 'opacity-50 grayscale border-slate-50 cursor-not-allowed'}`}
                             disabled={!product.is_active}
                         >
-                            <div className="w-full aspect-square bg-slate-50 rounded-xl lg:rounded-2xl mb-2 lg:mb-3 flex items-center justify-center text-slate-200 group-hover:bg-brand-50 group-hover:text-brand-200 transition-colors">
+                            <div className="w-full aspect-square bg-slate-50 rounded-lg lg:rounded-2xl mb-1.5 lg:mb-3 flex items-center justify-center text-slate-200 group-hover:bg-brand-50 group-hover:text-brand-200 transition-colors">
                                 {product.image_path ? (
-                                    <img src={product.image_path} alt={product.name} className="w-full h-full object-cover rounded-xl lg:rounded-2xl" />
+                                    <img src={product.image_path} alt={product.name} className="w-full h-full object-cover rounded-lg lg:rounded-2xl" />
                                 ) : (
-                                    <svg className="w-8 h-8 lg:w-10 lg:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                    <svg className="w-6 h-6 lg:w-10 lg:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                                 )}
                             </div>
-                            <h3 className="font-black text-slate-900 uppercase tracking-tight text-[10px] lg:text-xs mb-0.5 truncate">{product.name}</h3>
-                            <p className="text-brand-600 font-black text-xs lg:text-sm">₱{product.price_per_kg.toFixed(2)}<span className="text-[8px] lg:text-[10px] text-slate-400 lowercase font-bold ml-1">/kg</span></p>
+                            <h3 className="font-black text-slate-900 uppercase tracking-tight text-[9px] lg:text-xs mb-0.5 truncate">{product.name}</h3>
+                            <p className="text-brand-600 font-black text-[10px] lg:text-sm">₱{product.price_per_kg.toFixed(2)}<span className="text-[7px] lg:text-[10px] text-slate-400 lowercase font-bold ml-0.5">/kg</span></p>
                         </button>
                     )))}
                 </div>
             </div>
 
             {/* Cart Sidebar */}
-            <div className="w-full lg:w-72 xl:w-80 2xl:w-96 bg-white rounded-[2rem] lg:rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col overflow-hidden shrink-0 h-[500px] lg:h-auto">
+            <div className="w-64 sm:w-72 lg:w-80 xl:w-96 bg-white rounded-[1.5rem] lg:rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col overflow-hidden shrink-0">
                 {/* Cashier Selection */}
-                <div className="px-6 lg:px-8 py-6 bg-slate-900 border-b border-white/5">
-                    <div className="space-y-3">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Operating Cashier</label>
+                <div className="px-4 lg:px-8 py-3 lg:py-6 bg-slate-900 border-b border-white/5">
+                    <div className="space-y-1 lg:space-y-3">
+                        <label className="text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Operating Cashier</label>
                         <div className="relative">
                             <select 
                                 value={selectedCashier}
                                 onChange={(e) => setSelectedCashier(e.target.value)}
-                                className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-2.5 text-sm font-bold text-white focus:border-brand-500 focus:ring-4 focus:ring-brand-500/5 outline-none transition-all appearance-none cursor-pointer"
+                                className="w-full bg-white/10 border border-white/10 rounded-lg lg:rounded-xl px-3 lg:px-4 py-1.5 lg:py-2 text-[11px] lg:text-sm font-bold text-white focus:border-brand-500 focus:ring-4 focus:ring-brand-500/5 outline-none transition-all appearance-none cursor-pointer"
                             >
                                 <option value={user.full_name}>{user.full_name} (Owner)</option>
                                 {availableCashiers.map((name, idx) => (
                                     <option key={idx} value={name} className="text-slate-900">{name}</option>
                                 ))}
                             </select>
-                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
+                            <div className="absolute right-3 lg:right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                <svg className="w-3 h-3 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Seller Information (Optional) */}
-                <div className="px-6 lg:px-8 py-6 bg-slate-50 border-b border-slate-100">
-                    <div className="space-y-3">
+                <div className="px-4 lg:px-8 py-3 lg:py-6 bg-slate-50 border-b border-slate-100">
+                    <div className="space-y-1 lg:space-y-3">
                         <div className="flex items-center justify-between">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Seller Information</label>
-                            <span className="text-[9px] font-bold text-slate-400 italic">Optional</span>
+                            <label className="text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Seller Information</label>
+                            <span className="text-[8px] font-bold text-slate-400 italic">Optional</span>
                         </div>
                         <div className="relative">
                             <input 
                                 type="text" 
-                                placeholder="Customer Name" 
+                                placeholder="Name" 
                                 value={customerName}
                                 onChange={(e) => setCustomerName(e.target.value)}
-                                className="w-full bg-white border-2 border-slate-100 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/5 outline-none transition-all"
+                                className="w-full bg-white border-2 border-slate-100 rounded-lg lg:rounded-xl px-3 lg:px-4 py-1.5 lg:py-2 text-[11px] lg:text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/5 outline-none transition-all"
                             />
                         </div>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">Leave blank for walk-in customers</p>
                     </div>
                 </div>
 
-                <div className="p-6 lg:p-8 border-b border-slate-50">
-                    <h2 className="text-lg lg:text-xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
-                        <svg className="w-5 h-5 lg:w-6 lg:h-6 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                        Current Order
+                <div className="p-4 lg:p-8 border-b border-slate-50">
+                    <h2 className="text-sm lg:text-xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-2 lg:gap-3">
+                        <svg className="w-4 h-4 lg:w-6 lg:h-6 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                        Order
                     </h2>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6 lg:p-8 space-y-4">
+                <div className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-3 lg:space-y-4">
                     {cart.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-4 opacity-50">
                             <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
@@ -342,15 +341,15 @@ const POS = ({ user, openModal }) => {
                     )}
                 </div>
 
-                <div className="p-8 bg-slate-900 text-white space-y-6">
+                <div className="p-6 lg:p-8 bg-slate-900 text-white space-y-4 lg:space-y-6">
                     <div className="flex items-center justify-between">
-                        <span className="text-slate-400 font-bold uppercase tracking-widest text-xs">Total Amount</span>
-                        <span className="text-3xl font-black">₱{totalAmount.toFixed(2)}</span>
+                        <span className="text-slate-400 font-bold uppercase tracking-widest text-[10px] lg:text-xs">Total Amount</span>
+                        <span className="text-2xl lg:text-3xl font-black">₱{totalAmount.toFixed(2)}</span>
                     </div>
                     <button 
                         disabled={cart.length === 0}
                         onClick={openCheckoutModal}
-                        className="w-full bg-brand-600 hover:bg-brand-700 disabled:bg-slate-700 text-white font-black py-5 rounded-2xl shadow-xl shadow-brand-900/50 transition-all hover:-translate-y-1 active:scale-95 text-lg uppercase tracking-widest"
+                        className="w-full bg-brand-600 hover:bg-brand-700 disabled:bg-slate-700 text-white font-black py-4 lg:py-5 rounded-2xl shadow-xl shadow-brand-900/50 transition-all hover:-translate-y-1 active:scale-95 text-base lg:text-lg uppercase tracking-widest"
                     >
                         Checkout Order
                     </button>

@@ -152,32 +152,32 @@ const Transactions = ({ shopSettings, openModal }) => {
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10 animate-fade-in pb-20">
             {/* Header Section */}
-            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+            <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6">
                 <div className="space-y-1">
-                    <h2 className="text-4xl font-black text-slate-900 uppercase tracking-tight leading-none">Transactions</h2>
+                    <h2 className="text-3xl lg:text-4xl font-black text-slate-900 uppercase tracking-tight leading-none">Transactions</h2>
                     <p className="text-slate-400 font-bold uppercase tracking-[0.2em] text-[10px]">View & reprint receipts</p>
                 </div>
                 
-                <div className="flex flex-col sm:flex-row items-center gap-4">
+                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 w-full xl:w-auto">
                     {/* Date Filters */}
-                    <div className="flex items-center gap-2 bg-white border-2 border-slate-100 p-1.5 rounded-2xl">
-                        <div className="flex flex-col px-3">
+                    <div className="flex items-center gap-2 bg-white border-2 border-slate-100 p-1.5 rounded-2xl flex-1 md:flex-initial">
+                        <div className="flex flex-col px-3 flex-1 md:flex-initial">
                             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">From</span>
                             <input 
                                 type="date" 
                                 value={dateFrom}
                                 onChange={(e) => setDateFrom(e.target.value)}
-                                className="bg-transparent outline-none text-[11px] font-bold text-slate-900" 
+                                className="bg-transparent outline-none text-[11px] font-bold text-slate-900 w-full" 
                             />
                         </div>
                         <div className="w-px h-8 bg-slate-100"></div>
-                        <div className="flex flex-col px-3">
+                        <div className="flex flex-col px-3 flex-1 md:flex-initial">
                             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">To</span>
                             <input 
                                 type="date" 
                                 value={dateTo}
                                 onChange={(e) => setDateTo(e.target.value)}
-                                className="bg-transparent outline-none text-[11px] font-bold text-slate-900" 
+                                className="bg-transparent outline-none text-[11px] font-bold text-slate-900 w-full" 
                             />
                         </div>
                         {(dateFrom || dateTo) && (
@@ -192,7 +192,7 @@ const Transactions = ({ shopSettings, openModal }) => {
                     </div>
 
                     {/* Search */}
-                    <div className="bg-white border-2 border-slate-100 h-14 w-full sm:w-72 rounded-2xl flex items-center px-4 gap-3 focus-within:ring-4 focus-within:ring-brand-500/10 focus-within:border-brand-500 transition-all">
+                    <div className="bg-white border-2 border-slate-100 h-14 w-full md:w-64 lg:w-72 rounded-2xl flex items-center px-4 gap-3 focus-within:ring-4 focus-within:ring-brand-500/10 focus-within:border-brand-500 transition-all flex-1 md:flex-initial">
                         <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         <input 
                             type="text" 
@@ -206,17 +206,17 @@ const Transactions = ({ shopSettings, openModal }) => {
             </div>
 
             {/* Transactions Table */}
-            <div className="bg-white rounded-[2rem] lg:rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
-                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
-                    <table className="w-full min-w-[1100px]">
+            <div className="bg-white rounded-[1.5rem] lg:rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
+                <div className="overflow-x-auto custom-scrollbar">
+                    <table className="w-full min-w-[1000px]">
                         <thead className="bg-slate-50/50 border-b border-slate-100">
                             <tr>
-                                <th className="px-4 lg:px-8 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-[180px]">Transaction ID</th>
-                                <th className="px-4 lg:px-8 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-[200px]">Date & Time</th>
-                                <th className="px-4 lg:px-8 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-[180px]">Customer</th>
-                                <th className="px-4 lg:px-8 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-[120px]">Status</th>
-                                <th className="px-4 lg:px-8 py-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-[160px]">Total Amount</th>
-                                <th className="sticky right-0 bg-slate-50 lg:bg-transparent px-4 lg:px-8 py-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] shadow-[-12px_0_15px_-3px_rgba(0,0,0,0.02)] lg:shadow-none w-[260px]">Actions</th>
+                                <th className="px-4 lg:px-8 py-6 text-left text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-[15%]">Transaction ID</th>
+                                <th className="px-4 lg:px-8 py-6 text-left text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-[20%]">Date & Time</th>
+                                <th className="px-4 lg:px-8 py-6 text-left text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-[18%]">Customer</th>
+                                <th className="px-4 lg:px-8 py-6 text-left text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-[12%]">Status</th>
+                                <th className="px-4 lg:px-8 py-6 text-right text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-[15%]">Total Amount</th>
+                                <th className="px-4 lg:px-8 py-6 text-center text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-[20%] sticky right-0 bg-slate-50/95 backdrop-blur-sm shadow-[-10px_0_15px_-3px_rgba(0,0,0,0.05)]">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
@@ -267,10 +267,12 @@ const Transactions = ({ shopSettings, openModal }) => {
                                             </div>
                                         </td>
                                         <td className="px-4 lg:px-8 py-6">
-                                            <span className="font-bold text-slate-600 text-xs lg:text-sm">{t.customer_name || 'Walk-in'}</span>
+                                            <span className="font-bold text-slate-600 text-xs lg:text-sm truncate block max-w-[120px]" title={t.customer_name || 'Walk-in'}>
+                                                {t.customer_name || 'Walk-in'}
+                                            </span>
                                         </td>
                                         <td className="px-4 lg:px-8 py-6">
-                                            <span className={`text-[9px] lg:text-[10px] font-black px-2.5 lg:px-3 py-1 rounded-full uppercase tracking-widest w-fit ${
+                                            <span className={`text-[9px] lg:text-[10px] font-black px-2 lg:px-3 py-1 rounded-full uppercase tracking-widest inline-block ${
                                                 t.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 
                                                 t.status === 'unpaid' ? 'bg-rose-50 text-rose-600' : 
                                                 t.status === 'partial' ? 'bg-amber-50 text-amber-600' :
@@ -282,34 +284,34 @@ const Transactions = ({ shopSettings, openModal }) => {
                                             </span>
                                         </td>
                                         <td className="px-4 lg:px-8 py-6 text-right">
-                                            <span className="font-black text-brand-600 text-base lg:text-lg whitespace-nowrap">₱{t.total_amount.toFixed(2)}</span>
+                                            <span className="font-black text-brand-600 text-sm lg:text-lg whitespace-nowrap">₱{t.total_amount.toFixed(2)}</span>
                                         </td>
-                                        <td className="sticky right-0 bg-white group-hover:bg-slate-50/50 px-4 lg:px-8 py-6 text-right shadow-[-12px_0_15px_-3px_rgba(0,0,0,0.02)] lg:shadow-none transition-colors">
-                                            <div className="flex items-center justify-end gap-1.5 lg:gap-2">
+                                        <td className="px-4 lg:px-8 py-6 text-center sticky right-0 bg-white/95 group-hover:bg-slate-50/95 backdrop-blur-sm shadow-[-10px_0_15px_-3px_rgba(0,0,0,0.05)] transition-colors">
+                                            <div className="flex items-center justify-center gap-1 lg:gap-2">
                                                 <button 
                                                     onClick={() => viewDetails(t)}
-                                                    className="flex items-center gap-1.5 px-2.5 lg:px-3 py-2 bg-slate-100 text-slate-500 rounded-xl hover:bg-brand-50 hover:text-brand-600 transition-all active:scale-95 whitespace-nowrap"
+                                                    className="p-2 lg:px-3 lg:py-2 bg-slate-100 text-slate-500 rounded-lg lg:rounded-xl hover:bg-brand-50 hover:text-brand-600 transition-all active:scale-95 flex items-center gap-1.5"
                                                     title="View Details"
                                                 >
-                                                    <svg className="w-3.5 h-3.5 lg:w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                                    <span className="text-[9px] lg:text-[10px] font-black uppercase tracking-widest hidden sm:inline">View</span>
+                                                    <svg className="w-3.5 h-3.5 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                                    <span className="text-[9px] lg:text-[10px] font-black uppercase tracking-widest hidden lg:inline">View</span>
                                                 </button>
                                                 <button 
                                                     disabled={downloading}
                                                     onClick={() => handleDownloadPDF(t)}
-                                                    className="flex items-center gap-1.5 px-2.5 lg:px-3 py-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all active:scale-95 whitespace-nowrap"
+                                                    className="p-2 lg:px-3 lg:py-2 bg-blue-50 text-blue-600 rounded-lg lg:rounded-xl hover:bg-blue-600 hover:text-white transition-all active:scale-95 flex items-center gap-1.5"
                                                     title="Download PDF"
                                                 >
-                                                    <svg className="w-3.5 h-3.5 lg:w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                                                    <span className="text-[9px] lg:text-[10px] font-black uppercase tracking-widest hidden sm:inline">PDF</span>
+                                                    <svg className="w-3.5 h-3.5 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                                    <span className="text-[9px] lg:text-[10px] font-black uppercase tracking-widest hidden lg:inline">PDF</span>
                                                 </button>
                                                 <button 
                                                     onClick={() => handleReprint(t.id)}
-                                                    className="flex items-center gap-1.5 px-2.5 lg:px-3 py-2 bg-brand-50 text-brand-600 rounded-xl hover:bg-brand-600 hover:text-white transition-all active:scale-95 whitespace-nowrap"
+                                                    className="p-2 lg:px-3 lg:py-2 bg-brand-50 text-brand-600 rounded-lg lg:rounded-xl hover:bg-brand-600 hover:text-white transition-all active:scale-95 flex items-center gap-1.5"
                                                     title="Reprint Receipt"
                                                 >
-                                                    <svg className="w-3.5 h-3.5 lg:w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                                                    <span className="text-[9px] lg:text-[10px] font-black uppercase tracking-widest hidden sm:inline">Print</span>
+                                                    <svg className="w-3.5 h-3.5 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                                    <span className="text-[9px] lg:text-[10px] font-black uppercase tracking-widest hidden lg:inline">Print</span>
                                                 </button>
                                             </div>
                                         </td>

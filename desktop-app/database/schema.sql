@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     transaction_number TEXT UNIQUE NOT NULL,
     cashier_id INTEGER,
     customer_name TEXT,
+    cashier_name TEXT,
     seller_id INTEGER,
     total_amount REAL NOT NULL,
     payment_received REAL NOT NULL,
