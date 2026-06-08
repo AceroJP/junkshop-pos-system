@@ -2,7 +2,7 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 
-const API_URL = 'http://127.0.0.1:8000/api/version';
+const API_URL = 'http://192.168.55.103:8000/api/version';
 const PACKAGE_JSON_PATH = path.join(__dirname, 'package.json');
 
 async function syncVersion() {

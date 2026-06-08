@@ -8,4 +8,10 @@ export default defineConfig({
             refresh: true,
         }),
     ],
+    /*
+    server: {
+        port: 3003,
+        strictPort: true,
+    },
+    */
 });

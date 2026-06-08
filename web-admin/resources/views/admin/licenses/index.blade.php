@@ -56,8 +56,10 @@
                                     @if($license->status !== 'revoked')
                                         <form action="{{ route('admin.licenses.revoke', $license) }}" method="POST" onsubmit="return confirm('Revoke this license key? This action is permanent.')">
                                             @csrf
-                                            <button type="submit" class="text-xs font-black text-rose-500 hover:text-rose-700 uppercase tracking-widest">
-                                                Revoke
+                                            <button type="submit" class="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-all" title="Revoke License">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
+                                                </svg>
                                             </button>
                                         </form>
                                     @else

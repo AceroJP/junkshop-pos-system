@@ -1,6 +1,6 @@
 {
   "name": "junkshop-pos",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "Offline-first POS system for junkshops",
   "main": "electron/main.js",
   "scripts": {

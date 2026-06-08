@@ -92,20 +92,24 @@ const Reports = ({ shopSettings }) => {
 
             const pdfResult = await generateReportPDF(reportData, shopSettings, exportPeriod);
             
-            const saveResult = await window.electron.savePDF({
-                filename: pdfResult.filename,
-                base64Data: pdfResult.base64Data
-            });
-
-            if (saveResult.success) {
-                Swal.fire({
-                    title: 'Export Success!',
-                    text: 'PDF Report saved successfully.',
-                    icon: 'success',
-                    timer: 2000,
-                    showConfirmButton: false,
-                    customClass: { popup: 'rounded-[2rem]' }
+            // This will trigger the system print dialog in Electron
+            if (window.electron && window.electron.savePDF) {
+                const saveResult = await window.electron.savePDF({
+                    filename: pdfResult.filename,
+                    base64Data: pdfResult.base64Data,
+                    printDirectly: true // Flag to suggest immediate printing
                 });
+
+                if (saveResult.success) {
+                    Swal.fire({
+                        title: 'Report Generated!',
+                        text: 'PDF Report has been saved and is ready to print.',
+                        icon: 'success',
+                        timer: 2000,
+                        showConfirmButton: false,
+                        customClass: { popup: 'rounded-[2rem]' }
+                    });
+                }
             }
         } catch (err) {
             console.error('Export failed', err);

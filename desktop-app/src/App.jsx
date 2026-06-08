@@ -261,7 +261,7 @@ function App() {
               <img src={logo} className="w-full h-full object-contain p-1" alt="Logo" />
             )}
           </div>
-          <h1 className="text-lg font-black text-slate-900 uppercase tracking-tight truncate max-w-[150px]">{shopSettings.shop_name}</h1>
+          <h1 className="text-lg font-black text-slate-900 uppercase tracking-tight leading-tight break-words line-clamp-2 flex-1">{shopSettings.shop_name}</h1>
         </div>
         <button 
           onClick={() => setIsSidebarOpen(true)}
@@ -283,17 +283,17 @@ function App() {
 
       {/* Sidebar */}
       <aside className={`fixed inset-y-0 left-0 w-72 lg:w-64 xl:w-72 bg-white border-r border-slate-100 flex flex-col shrink-0 transition-transform duration-300 z-[80] lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} ${activeModal ? 'blur-sm grayscale-[0.2] pointer-events-none' : ''}`}>
-        <div className="h-24 flex items-center px-8 gap-4 border-b border-slate-50 shrink-0">
-          <div className="w-12 h-12 bg-white border border-slate-100 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-100 overflow-hidden">
+        <div className="h-24 flex items-center px-6 lg:px-8 gap-3 lg:gap-4 border-b border-slate-50 shrink-0">
+          <div className="w-10 h-10 lg:w-12 lg:h-12 bg-white border border-slate-100 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-100 overflow-hidden shrink-0">
             {shopSettings.shop_logo ? (
               <img src={shopSettings.shop_logo} className="w-full h-full object-cover" />
             ) : (
               <img src={logo} className="w-full h-full object-contain p-1" alt="Logo" />
             )}
           </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-black text-slate-900 uppercase tracking-tight leading-none truncate">{shopSettings.shop_name}</h1>
-            <span className="text-brand-600 font-black text-[10px] uppercase tracking-[0.3em]">POS System</span>
+          <div className="min-w-0 flex-1 flex flex-col justify-center overflow-hidden">
+            <h1 className="text-lg lg:text-xl font-black text-slate-900 uppercase tracking-tight leading-tight break-words line-clamp-2">{shopSettings.shop_name}</h1>
+            <span className="text-brand-600 font-black text-[9px] lg:text-[10px] uppercase tracking-[0.3em] mt-0.5">POS System</span>
           </div>
           {/* Close button for mobile sidebar */}
           <button 
@@ -485,10 +485,15 @@ function App() {
 
                             <div className="pt-5 border-t border-white/20 flex justify-between items-end">
                               <div>
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] block mb-1">Total Change</span>
-                                <span className="text-4xl font-black text-emerald-400 tracking-tighter leading-none">₱{modalData.transaction.change_amount.toFixed(2)}</span>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] block mb-1">Status</span>
+                                <span className="text-4xl font-black text-emerald-400 tracking-tighter leading-none uppercase">
+                                  {modalData.transaction.status === 'completed' ? 'Paid' : 
+                                   modalData.transaction.status === 'unpaid' ? 'Unpaid' : 'Partial'}
+                                </span>
                               </div>
-                              <div className="bg-emerald-500/10 text-emerald-500 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest">
+                              <div className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest ${
+                                modalData.transaction.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'
+                              }`}>
                                 {modalData.transaction.status === 'completed' ? 'Fully Paid' : 'Credit'}
                               </div>
                             </div>

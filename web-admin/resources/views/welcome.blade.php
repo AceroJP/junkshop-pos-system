@@ -148,7 +148,7 @@
                         @else
                             <a href="{{ url('/dashboard') }}" class="bg-brand-600 hover:bg-brand-700 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-xl shadow-brand-200 transition-all hover:-translate-y-1">Go to Dashboard</a>
                         @endguest
-                        <a href="#" class="bg-white border border-slate-200 text-slate-700 px-8 py-4 rounded-2xl font-bold text-lg hover:bg-slate-50 transition-all">Download Demo</a>
+                        <a href="{{ route('public.download') }}" class="bg-white border border-slate-200 text-slate-700 px-8 py-4 rounded-2xl font-bold text-lg hover:bg-slate-50 transition-all">Download Latest App</a>
                     </div>
                     <div class="grid grid-cols-3 gap-6">
                         <div class="flex items-center gap-2 text-sm font-bold text-slate-500">
@@ -168,36 +168,9 @@
                 <div class="relative">
                     <div class="absolute -top-20 -right-20 w-96 h-96 bg-brand-100 rounded-full blur-3xl opacity-50"></div>
                     <div class="relative z-10 glass-card p-4 rounded-[2.5rem] shadow-2xl border border-white/50">
-                        <div class="bg-slate-900 rounded-[2rem] overflow-hidden aspect-[4/3] shadow-inner flex items-center justify-center p-8">
+                        <div class="bg-white rounded-[2rem] overflow-hidden aspect-[4/3] shadow-inner flex items-center justify-center">
                             <!-- Dashboard Mockup -->
-                            <div class="w-full h-full bg-slate-800 rounded-xl border border-slate-700 overflow-hidden flex flex-col">
-                                <div class="h-8 bg-slate-900 flex items-center px-4 gap-2">
-                                    <div class="w-2 h-2 rounded-full bg-rose-500"></div>
-                                    <div class="w-2 h-2 rounded-full bg-amber-500"></div>
-                                    <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
-                                </div>
-                                <div class="flex-1 p-6">
-                                    <div class="grid grid-cols-3 gap-4 mb-6">
-                                        <div class="h-20 bg-slate-700/50 rounded-lg p-3">
-                                            <div class="w-8 h-2 bg-brand-500/50 rounded mb-2"></div>
-                                            <div class="w-16 h-4 bg-white/10 rounded"></div>
-                                        </div>
-                                        <div class="h-20 bg-slate-700/50 rounded-lg p-3">
-                                            <div class="w-8 h-2 bg-brand-500/50 rounded mb-2"></div>
-                                            <div class="w-16 h-4 bg-white/10 rounded"></div>
-                                        </div>
-                                        <div class="h-20 bg-slate-700/50 rounded-lg p-3">
-                                            <div class="w-8 h-2 bg-brand-500/50 rounded mb-2"></div>
-                                            <div class="w-16 h-4 bg-white/10 rounded"></div>
-                                        </div>
-                                    </div>
-                                    <div class="h-32 bg-slate-700/50 rounded-lg mb-4"></div>
-                                    <div class="flex gap-4">
-                                        <div class="flex-1 h-20 bg-slate-700/50 rounded-lg"></div>
-                                        <div class="w-24 h-20 bg-brand-600 rounded-lg"></div>
-                                    </div>
-                                </div>
-                            </div>
+                            <img src="{{ asset('assets/POS Terminal.png') }}" class="w-full h-full object-contain" alt="POS Terminal Dashboard">
                         </div>
                         <!-- Printer Mockup Overlay -->
                         <div class="absolute -bottom-10 -left-10 w-48 h-48 bg-white rounded-3xl shadow-2xl p-4 flex flex-col items-center justify-center border border-slate-100 animate-bounce-slow">
@@ -343,7 +316,7 @@
 
             <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
                 @foreach($showcaseItems as $item)
-                    <div class="group cursor-pointer" @click="openImage('{{ asset($item['image_path'] ?? 'assets/placeholder.png') }}', '{{ $item['title'] }}')">
+                    <div class="group cursor-pointer" @click="openImage('{{ asset($item['image_path'] ?? 'assets/placeholder.png') }}', '{{ addslashes($item['title']) }}')">
                         <div class="rounded-[2.5rem] overflow-hidden shadow-2xl transition-all duration-500 hover:shadow-brand-200/50 group-hover:-translate-y-2">
                             <div class="bg-slate-800 aspect-video flex flex-col relative overflow-hidden">
                                 @if(isset($item['image_path']))

@@ -49,7 +49,7 @@
                                 <td class="px-8 py-5 whitespace-nowrap">
                                     <div class="flex items-center gap-3">
                                         <span class="font-black text-rose-600 tracking-widest text-sm select-all">{{ $license->license_key }}</span>
-                                        <button onclick="navigator.clipboard.writeText('{{ $license->license_key }}')" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-brand-600 transition-all" title="Copy Key">
+                                        <button onclick="navigator.clipboard.writeText('{{ $license->license_key }}')" class="text-slate-400 hover:text-brand-600 transition-all" title="Copy Key">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
                                         </button>
                                     </div>

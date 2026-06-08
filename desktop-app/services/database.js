@@ -4,7 +4,7 @@ const fs = require('fs');
 const { app } = require('electron');
 
 const isDev = !app.isPackaged;
-const appDataPath = app.getPath('userData');
+const appDataPath = isDev ? path.join(__dirname, '..') : app.getPath('userData');
 const dbDir = path.join(appDataPath, 'junkshop-pos');
 
 // Ensure database directory exists
@@ -88,8 +88,40 @@ function initializeDatabase() {
             });
 
             ensureAdminUser();
+            fixSettings();
         }
     });
+}
+
+/**
+ * Fix common settings issues
+ */
+async function fixSettings() {
+    try {
+        // Fix old API URL - Use the correct server IP (192.168.55.103)
+        const oldIps = ['192.168.55.111', '192.168.1.48', '192.168.55.106'];
+        const targetIp = '192.168.55.103';
+        
+        db.get("SELECT value FROM settings WHERE key = 'api_url'", (err, row) => {
+            if (row && row.value) {
+                const needsUpdate = oldIps.some(ip => row.value.includes(ip));
+                if (needsUpdate) {
+                    let newValue = row.value;
+                    oldIps.forEach(ip => {
+                        newValue = newValue.replace(ip, targetIp);
+                    });
+                    db.run("UPDATE settings SET value = ? WHERE key = 'api_url'", [newValue]);
+                    console.log(`Updated API URL to ${targetIp}`);
+                }
+            }
+        });
+
+        // Ensure printer settings are at least present
+        db.run("INSERT OR IGNORE INTO settings (key, value) VALUES ('printer_type', 'EPSON')");
+        
+    } catch (err) {
+        console.error('Error fixing settings:', err);
+    }
 }
 
 /**

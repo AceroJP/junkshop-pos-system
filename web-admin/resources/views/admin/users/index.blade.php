@@ -63,8 +63,16 @@
                                     @if(!$user->isSuperAdmin())
                                         <form action="{{ route('admin.users.toggle-status', $user) }}" method="POST" onsubmit="return confirm('Change status for this user?')">
                                             @csrf
-                                            <button type="submit" class="text-xs font-black {{ $user->is_active ? 'text-rose-500 hover:text-rose-700' : 'text-emerald-600 hover:text-emerald-800' }} uppercase tracking-widest">
-                                                {{ $user->is_active ? 'Deactivate' : 'Activate' }}
+                                            <button type="submit" class="p-2 {{ $user->is_active ? 'text-rose-500 hover:bg-rose-50' : 'text-emerald-600 hover:bg-emerald-50' }} rounded-xl transition-all" title="{{ $user->is_active ? 'Deactivate User' : 'Activate User' }}">
+                                                @if($user->is_active)
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
+                                                    </svg>
+                                                @else
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                    </svg>
+                                                @endif
                                             </button>
                                         </form>
                                     @else

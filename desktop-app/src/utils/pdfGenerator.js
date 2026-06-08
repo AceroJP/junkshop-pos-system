@@ -174,6 +174,15 @@ export const generateReportPDF = async (reportData, shopSettings, period) => {
         styles: { fontSize: 10, cellPadding: 3 },
     });
 
+    const totalPurchases = reportData.summary.reduce((acc, p) => acc + p.total_amount, 0);
+    const totalWeight = reportData.summary.reduce((acc, p) => acc + p.total_weight, 0);
+
+    const summaryY = doc.lastAutoTable.finalY + 10;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`TOTAL WEIGHT: ${totalWeight.toFixed(2)} kg`, 195, summaryY, { align: 'right' });
+    doc.text(`GRAND TOTAL: PHP ${totalPurchases.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 195, summaryY + 6, { align: 'right' });
+
     // --- Content: Transactions Table ---
     const transHead = [['ID', 'Date', 'Time', 'Customer', 'Cashier', 'Total']];
     const transBody = reportData.transactions.map(t => [

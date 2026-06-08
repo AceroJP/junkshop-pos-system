@@ -14,6 +14,9 @@ Route::get('/', function () {
     return view('welcome', compact('settings'));
 });
 
+// Public Download Route
+Route::get('/download-app', [CustomerController::class, 'downloadInstaller'])->name('public.download');
+
 // Role-based Dashboard Redirect
 Route::get('/dashboard', function () {
     if (auth()->user()->isAdmin()) {

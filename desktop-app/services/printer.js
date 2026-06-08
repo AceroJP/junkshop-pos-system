@@ -1,6 +1,138 @@
 const ThermalPrinter = require("node-thermal-printer").printer;
 const PrinterTypes = require("node-thermal-printer").types;
 const db = require("./database");
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+const { exec } = require('child_process');
+
+/**
+ * Helper to format numbers with commas and 2 decimal places
+ */
+const formatAmount = (num) => {
+    return Number(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+/**
+ * Robust execution of printer commands
+ * Falls back to raw command line printing if driver is missing
+ */
+const executePrinter = async (printer, printerName) => {
+    // Determine if we are in fallback mode safely
+    const isFallbackMode = printer.isFallback || false;
+    
+    try {
+        // Execute writes to the interface (either the printer or the temp file)
+        await printer.execute();
+        
+        // If we are NOT in fallback mode, we are done
+        if (!isFallbackMode) {
+            return { success: true };
+        }
+        
+        // If we ARE in fallback mode, we now need to send that file to the actual printer
+        console.log("Fallback mode active: Sending buffer to printer via CMD...");
+    } catch (err) {
+        console.warn("Standard printer execution failed, trying fallback:", err.message);
+    }
+
+    // --- FALLBACK LOGIC ---
+    if (os.platform() === 'win32') {
+        try {
+            // Get the buffer from the printer
+            const buffer = printer.getBuffer();
+            const tempFile = path.join(os.tmpdir(), `receipt_${Date.now()}.bin`);
+            fs.writeFileSync(tempFile, buffer);
+            
+            const printerShare = `\\\\localhost\\${printerName}`;
+            
+            return new Promise((resolve) => {
+                console.log(`Trying fallback 1 (copy /b) to ${printerShare}...`);
+                exec(`copy /b "${tempFile}" "${printerShare}"`, (error, stdout, stderr) => {
+                    if (!error) {
+                        console.log("Fallback print via 'copy /b' successful");
+                        resolve({ success: true });
+                    } else {
+                        console.warn("Fallback 1 (copy /b) failed:", stderr || error.message);
+                        console.log(`Trying fallback 2 (print /D) to ${printerName}...`);
+                        exec(`print /D:"${printerName}" "${tempFile}"`, (error2, stdout2, stderr2) => {
+                            if (!error2) {
+                                console.log("Fallback print via 'print' successful");
+                                resolve({ success: true });
+                            } else {
+                                console.warn("Fallback 2 (print /D) failed:", stderr2 || error2.message);
+                                
+                                console.log(`Trying fallback 3 (PowerShell) to ${printerName}...`);
+                                const psCommand = `powershell -Command "$bytes = [System.IO.File]::ReadAllBytes('${tempFile}'); [System.IO.File]::WriteAllBytes('\\\\.\\${printerName}', $bytes)"`;
+                                exec(psCommand, (error3, stdout3, stderr3) => {
+                                    if (!error3) {
+                                        console.log("Fallback print via PowerShell successful");
+                                        resolve({ success: true });
+                                    } else {
+                                        console.error("All fallback printing methods failed.");
+                                        resolve({ 
+                                            success: false, 
+                                            error: "Printer found but all raw commands failed. Please ensure the printer is SHARED as '" + printerName + "' in Windows settings." 
+                                        });
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+        } catch (fallbackErr) {
+            console.error("Fallback error:", fallbackErr);
+            return { success: false, error: "Printing failed: " + fallbackErr.message };
+        }
+    }
+    
+    return { success: false, error: "Printing failed. Windows OS required for raw fallback." };
+};
+
+/**
+ * Safe initialization of printer object
+ */
+const initPrinter = (type, name) => {
+    try {
+        // Attempt to initialize with the printer driver
+        const p = new ThermalPrinter({
+            type: type,
+            interface: `printer:${name}`,
+            characterSet: 'PC437_USA',
+            removeSpecialCharacters: false,
+            lineCharacter: "=",
+            width: 42
+        });
+        
+        // Some versions of the library throw error during constructor, 
+        // others might throw during getBuffer() or execute().
+        // We do a small test here to see if it's actually working.
+        try {
+            p.getBuffer();
+            p.isFallback = false;
+            return p;
+        } catch (e) {
+            console.warn("Printer driver initialized but failed buffer test. Falling back.");
+            throw e;
+        }
+    } catch (err) {
+        console.log("CRITICAL DRIVER MISSING: Using buffer-only fallback mode. Printing will use raw CMD commands.");
+        // Fallback: initialize with a dummy interface just to get the buffer/formatting
+        // We use a file path as interface to bypass the "No driver set" error
+        const tempDummyFile = path.join(os.tmpdir(), `dummy_printer_${Date.now()}.bin`);
+        const p = new ThermalPrinter({
+            type: type,
+            interface: tempDummyFile, 
+            characterSet: 'PC437_USA',
+            removeSpecialCharacters: false,
+            lineCharacter: "=",
+            width: 42
+        });
+        p.isFallback = true;
+        return p;
+    }
+};
 
 /**
  * Print a receipt for a given transaction
@@ -8,30 +140,25 @@ const db = require("./database");
 const printReceipt = async (transaction, items) => {
     // 1. Get printer settings from database
     const settings = {};
-    const rows = await db.all('SELECT * FROM settings WHERE key IN ("printer_name", "printer_type")');
+    const rows = await db.all('SELECT * FROM settings WHERE key IN ("printer_name", "printer_type", "shop_name")');
     rows.forEach(row => settings[row.key] = row.value);
 
     const printerName = settings.printer_name;
-    const printerType = settings.printer_type === 'STAR' ? PrinterTypes.STAR : PrinterTypes.EPSON;
+    const rawType = settings.printer_type || 'EPSON';
+    const printerType = rawType === 'STAR' ? PrinterTypes.STAR : PrinterTypes.EPSON;
+    const shopName = settings.shop_name || 'JUNKSHOP POS';
 
-    if (!printerName) {
-        console.warn("Printer name not set in settings, skipping print");
-        return { success: false, error: "Printer not configured" };
+    if (!printerName || printerName.trim() === "") {
+        console.warn("Printer name is empty in settings");
+        return { success: false, error: "Printer name is not set. Please go to Settings." };
     }
 
-    let printer;
-    try {
-        printer = new ThermalPrinter({
-            type: printerType,
-            interface: `printer:${printerName}`,
-            characterSet: 'SLOVENIA',
-            removeSpecialCharacters: false,
-            lineCharacter: "=",
-            width: 32
-        });
-    } catch (err) {
-        console.error("Failed to initialize printer driver:", err.message);
-        return { success: false, error: "Printer driver error: " + err.message };
+    console.log(`Initializing printer: "${printerName}" with type: ${rawType}`);
+
+    const printer = initPrinter(printerType, printerName);
+    
+    if (!printer) {
+        return { success: false, error: "Could not initialize printer object" };
     }
 
     try {
@@ -40,25 +167,35 @@ const printReceipt = async (transaction, items) => {
 
         if (isTest) {
             printer.alignCenter();
+            printer.println("--------------------------------");
             printer.println("TEST PRINT SUCCESSFUL");
+            printer.println("JUNKSHOP POS SYSTEM");
+            printer.println("--------------------------------");
             printer.println("Printer: " + printerName);
             printer.println("Type: " + (settings.printer_type || 'EPSON'));
-            printer.println("================================");
+            printer.println("Width: 80mm (42 chars)");
+            printer.println("--------------------------------");
             printer.cut();
-            await printer.execute();
-            return { success: true };
+            
+            console.log("Executing test print to:", printerName);
+            return await executePrinter(printer, printerName);
         }
-
+        
+        // For real receipts, we check connection if possible
+        // But for many USB printers on Windows, isPrinterConnected always returns false or true regardless of reality
+        // So we'll skip the hard block and just try to execute
+        /*
         const isConnected = await printer.isPrinterConnected();
         if (!isConnected) {
             console.warn("Printer not connected, skipping print");
             return { success: false, error: "Printer not connected" };
         }
+        */
 
         printer.alignCenter();
-        printer.println("JUNKSHOP POS");
+        printer.println(shopName.toUpperCase());
         printer.println("SALES RECEIPT");
-        printer.println("================================");
+        printer.println("------------------------------------------");
         printer.alignLeft();
         printer.println(`No: ${transaction.transaction_number}`);
         printer.println(`Date: ${new Date(transaction.created_at + ' UTC').toLocaleString()}`);
@@ -69,61 +206,58 @@ const printReceipt = async (transaction, items) => {
         printer.bold(true);
         printer.println(`STATUS: ${statusText}`);
         printer.bold(false);
-        printer.println("--------------------------------");
+        printer.println("------------------------------------------");
         
         printer.tableCustom([
-            { text: "Item", align: "LEFT", width: 0.5 },
-            { text: "Weight", align: "CENTER", width: 0.2 },
-            { text: "Amount", align: "RIGHT", width: 0.3 }
+            { text: "Item", align: "LEFT", width: 0.30 },
+            { text: "Weight", align: "LEFT", width: 0.35 },
+            { text: "Amount", align: "RIGHT", width: 0.33 }
         ]);
+        printer.println("------------------------------------------");
 
         items.forEach(item => {
+            const price = item.price_per_kg || (item.weight > 0 ? (item.subtotal / item.weight) : 0);
             printer.tableCustom([
-                { text: item.name, align: "LEFT", width: 0.5 },
-                { text: `${item.weight}kg`, align: "CENTER", width: 0.2 },
-                { text: `₱${item.subtotal.toFixed(2)}`, align: "RIGHT", width: 0.3 }
+                { text: item.name, align: "LEFT", width: 0.30 },
+                { text: `${item.weight}kg x ${formatAmount(price)}`, align: "LEFT", width: 0.35 },
+                { text: `P${formatAmount(item.subtotal)}`, align: "RIGHT", width: 0.33 }
             ]);
         });
 
-        printer.println("--------------------------------");
+        printer.println("------------------------------------------");
         printer.alignRight();
         printer.setTextDoubleHeight();
-        printer.println(`TOTAL: ₱${transaction.total_amount.toFixed(2)}`);
+        printer.println(`TOTAL: P${formatAmount(transaction.total_amount)}`);
         printer.setTextNormal();
 
         if (transaction.status === 'unpaid' || transaction.status === 'partial') {
             printer.alignCenter();
-            printer.println("********************************");
+            printer.println("******************************************");
             printer.println("        CREDIT RECEIPT         ");
             printer.println("       (AMOUNT TO BE PAID)     ");
-            printer.println("********************************");
+            printer.println("******************************************");
             printer.alignLeft();
             printer.println(`Status: ${transaction.status.toUpperCase()}`);
-            printer.println(`Paid: ₱${(transaction.paid_amount || 0).toFixed(2)}`);
-            printer.println(`Balance: ₱${(transaction.total_amount - (transaction.paid_amount || 0)).toFixed(2)}`);
+            printer.println(`Paid: P${formatAmount(transaction.paid_amount || 0)}`);
+            printer.println(`Balance: P${formatAmount(transaction.total_amount - (transaction.paid_amount || 0))}`);
         } else {
-            // Only show Payment and Change if it was a cash sale (completed)
-            if (transaction.status === 'completed') {
-                printer.println(`Payment: ₱${transaction.payment_received.toFixed(2)}`);
-                printer.println(`Change: ₱${transaction.change_amount.toFixed(2)}`);
-            }
+            // No need to show Payment/Change for completed buy transactions
         }
         
         printer.alignCenter();
-        printer.println("================================");
-        printer.println("THANK YOU FOR YOUR BUSINESS!");
+        printer.println("------------------------------------------");
+        printer.println("THANK YOU! SEE YOU NEXT TIME");
         printer.cut();
 
-        await printer.execute();
-        return { success: true };
+        return await executePrinter(printer, printerName);
     } catch (err) {
         console.error("Print error", err);
-        return { success: false, error: err.message };
+        return { success: false, error: "Printing failed: " + err.message };
     }
 };
 
 async function printPaymentReceipt(data) {
-    const { seller, amount, notes, previousBalance, newBalance, originalDate } = data;
+    const { seller, amount, notes, previousBalance, newBalance, originalDate, transactionNumber } = data;
 
     // 1. Get printer settings from database
     const settings = {};
@@ -139,29 +273,25 @@ async function printPaymentReceipt(data) {
         return { success: false, error: "Printer not configured" };
     }
 
-    let printer;
     try {
-        printer = new ThermalPrinter({
-            type: printerType,
-            interface: `printer:${printerName}`,
-            characterSet: 'SLOVENIA',
-            removeSpecialCharacters: false,
-            lineCharacter: "=",
-            width: 32
-        });
-    } catch (err) {
-        console.error("Failed to initialize printer driver for payment receipt:", err.message);
-        return { success: false, error: "Printer driver error: " + err.message };
-    }
+        const printer = initPrinter(printerType, printerName);
 
-    try {
+        if (!printer) {
+            return { success: false, error: "Could not initialize printer object" };
+        }
+
+        // Skip isConnected check for consistency
+        
         printer.alignCenter();
         printer.println(shopName.toUpperCase());
         printer.println("PAYMENT RECEIPT");
-        printer.drawLine();
+        printer.println("------------------------------------------");
 
         printer.alignLeft();
-        printer.println(`Seller: ${seller.name}`);
+        if (transactionNumber) {
+            printer.println(`No: ${transactionNumber}`);
+        }
+        printer.println(`Customer: ${seller.name}`);
         printer.println(`Original Date: ${new Date(originalDate).toLocaleDateString()}`);
         printer.println(`Payment Date: ${new Date().toLocaleString()}`);
         
@@ -170,15 +300,15 @@ async function printPaymentReceipt(data) {
         printer.bold(true);
         printer.println(`STATUS: ${paymentStatus}`);
         printer.bold(false);
-        printer.drawLine();
+        printer.println("------------------------------------------");
 
         printer.alignRight();
-        printer.println(`Previous Balance: P${previousBalance.toFixed(2)}`);
+        printer.println(`Previous Balance: P${formatAmount(previousBalance)}`);
         printer.bold(true);
-        printer.println(`AMOUNT PAID: P${amount.toFixed(2)}`);
+        printer.println(`AMOUNT PAID: P${formatAmount(amount)}`);
         printer.bold(false);
-        printer.drawLine();
-        printer.println(`REMAINING: P${newBalance.toFixed(2)}`);
+        printer.println("------------------------------------------");
+        printer.println(`REMAINING: P${formatAmount(newBalance)}`);
 
         if (notes) {
             printer.alignLeft();
@@ -187,13 +317,12 @@ async function printPaymentReceipt(data) {
 
         printer.newLine();
         printer.alignCenter();
-        printer.println("Thank you for your business!");
+        printer.println("------------------------------------------");
+        printer.println("THANK YOU! SEE YOU NEXT TIME");
         printer.cut();
-
-        await printer.execute();
-        return { success: true };
+        return await executePrinter(printer, printerName);
     } catch (err) {
-        console.error("Payment Receipt Print Error:", err);
+        console.error("Payment print error", err);
         return { success: false, error: err.message };
     }
 }
@@ -214,22 +343,28 @@ async function printStatement(sellerId) {
     const transactions = await db.all('SELECT * FROM transactions WHERE seller_id = ? ORDER BY created_at ASC', [sellerId]);
     const payments = await db.all('SELECT * FROM payments WHERE seller_id = ? ORDER BY created_at ASC', [sellerId]);
 
-    let printer;
     try {
-        printer = new ThermalPrinter({
-            type: printerType,
-            interface: `printer:${printerName}`,
-            width: 32
-        });
-    } catch (err) { return { success: false, error: err.message }; }
+        const printer = initPrinter(printerType, printerName);
 
-    try {
+        if (!printer) {
+            return { success: false, error: "Could not initialize printer object" };
+        }
+
+        // Skip isConnected check for consistency
+        /*
+        const isConnected = await printer.isPrinterConnected();
+        if (!isConnected) {
+            return { success: false, error: `Printer "${printerName}" is offline.` };
+        }
+        */
+
         printer.alignCenter();
         printer.println(shopName.toUpperCase());
         printer.println("ACCOUNT STATEMENT");
         printer.bold(true);
         printer.println(seller.name.toUpperCase());
         printer.bold(false);
+        printer.println(`Customer: ${seller.name}`);
         printer.println(`Date: ${new Date().toLocaleDateString()}`);
         printer.drawLine();
 
@@ -248,20 +383,21 @@ async function printStatement(sellerId) {
             runningBalance += item.amount;
             const dateStr = new Date(item.date).toLocaleDateString('en-US', {month:'short', day:'numeric'}).padEnd(10);
             const typeStr = item.type.padEnd(6);
-            const amtStr = (item.amount > 0 ? '+' : '') + item.amount.toFixed(0);
+            const amtStr = (item.amount > 0 ? '+' : '') + formatAmount(item.amount).split('.')[0];
             printer.println(`${dateStr} ${typeStr} ${amtStr.padStart(10)}`);
         });
 
         printer.drawLine();
         printer.alignRight();
         printer.bold(true);
-        printer.println(`TOTAL DUE: P${seller.total_balance_owed.toFixed(2)}`);
+        printer.println(`TOTAL DUE: P${formatAmount(seller.total_balance_owed)}`);
         printer.bold(false);
 
         printer.newLine();
+        printer.alignCenter();
+        printer.println("THANK YOU! SEE YOU NEXT TIME");
         printer.cut();
-        await printer.execute();
-        return { success: true };
+        return await executePrinter(printer, printerName);
     } catch (err) {
         return { success: false, error: err.message };
     }

@@ -120,13 +120,15 @@
                             </div>
                             
                             <div class="flex gap-4">
-                                <button type="button" onclick="confirmApprove('{{ $payment->id }}')" class="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-brand-100 transition-all hover:-translate-y-1">
+                                <button type="button" onclick="confirmApprove('{{ $payment->id }}')" class="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-brand-100 transition-all hover:-translate-y-1 flex items-center justify-center gap-2">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
                                     Approve
                                 </button>
                                 <form id="approve-form-{{ $payment->id }}" action="{{ route('admin.payments.verify', $payment) }}" method="POST" class="hidden">
                                     @csrf
                                 </form>
-                                <button onclick="openRejectModal('{{ $payment->id }}')" class="flex-1 bg-white border-2 border-slate-100 text-rose-500 font-black py-4 rounded-2xl hover:bg-rose-50 hover:border-rose-100 transition-all">
+                                <button onclick="openRejectModal('{{ $payment->id }}')" class="flex-1 bg-white border-2 border-slate-100 text-rose-500 font-black py-4 rounded-2xl hover:bg-rose-50 hover:border-rose-100 transition-all flex items-center justify-center gap-2">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
                                     Reject
                                 </button>
                             </div>

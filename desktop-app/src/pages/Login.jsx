@@ -104,7 +104,7 @@ const Login = ({ onLogin, shopSettings }) => {
                         </div>
                     </div>
                     
-                    <h2 className="text-lg sm:text-xl lg:text-2xl font-black uppercase tracking-tight truncate px-4 relative z-10">{shopSettings.shop_name}</h2>
+                    <h2 className="text-lg sm:text-xl lg:text-2xl font-black uppercase tracking-tight leading-tight break-words line-clamp-2 px-4 relative z-10">{shopSettings.shop_name}</h2>
                     <p className="text-white/80 font-bold mt-1 text-[8px] sm:text-[9px] lg:text-[10px] uppercase tracking-[0.3em] relative z-10">Junkshop POS System</p>
                 </div>
 

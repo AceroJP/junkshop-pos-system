@@ -172,13 +172,14 @@ ipcMain.handle('delete-transaction', async (event, transactionId) => {
 ipcMain.handle('reprint-receipt', async (event, transactionId) => {
     try {
         const transaction = await db.get('SELECT t.*, COALESCE(t.cashier_name, u.full_name) as cashier_name FROM transactions t LEFT JOIN users u ON t.cashier_id = u.id WHERE t.id = ?', [transactionId]);
-        const items = await db.all('SELECT ti.*, p.name FROM transaction_items ti JOIN products p ON ti.product_id = p.id WHERE ti.transaction_id = ?', [transactionId]);
+        const items = await db.all('SELECT ti.*, p.name, p.price_per_kg FROM transaction_items ti JOIN products p ON ti.product_id = p.id WHERE ti.transaction_id = ?', [transactionId]);
         
         // Map items to the format expected by printer service
         const formattedItems = items.map(item => ({
             name: item.name,
             weight: item.weight_kg,
-            subtotal: item.subtotal
+            subtotal: item.subtotal,
+            price_per_kg: item.price_per_kg
         }));
 
         await printer.printReceipt(transaction, formattedItems);
@@ -241,7 +242,16 @@ ipcMain.handle('save-transaction', async (event, transactionData) => {
         // Attempt immediate printing
         try {
             const fullTransaction = await db.get('SELECT * FROM transactions WHERE id = ?', [transactionId]);
-            await printer.printReceipt(fullTransaction, items);
+            const fullItems = await db.all('SELECT ti.*, p.name, p.price_per_kg FROM transaction_items ti JOIN products p ON ti.product_id = p.id WHERE ti.transaction_id = ?', [transactionId]);
+            
+            const formattedItems = fullItems.map(item => ({
+                name: item.name,
+                weight: item.weight_kg,
+                subtotal: item.subtotal,
+                price_per_kg: item.price_per_kg
+            }));
+
+            await printer.printReceipt(fullTransaction, formattedItems);
         } catch (printErr) {
             console.error('Immediate printing failed, item stays in queue', printErr);
         }
@@ -326,7 +336,7 @@ ipcMain.handle('record-payment', async (event, { seller_id, amount, notes }) => 
         }
 
         // Edge case: Prevent paying more than remaining balance
-        if (amount > previousBalance) {
+        if (amount > (previousBalance + 0.01)) { // Small buffer for float precision
             return { success: false, error: `Payment cannot exceed current balance (₱${previousBalance.toFixed(2)})` };
         }
 
@@ -337,6 +347,7 @@ ipcMain.handle('record-payment', async (event, { seller_id, amount, notes }) => 
         );
 
         let remainingToPay = amount;
+        let lastUpdatedTransaction = null;
         
         for (const txn of transactions) {
             if (remainingToPay <= 0) break;
@@ -350,6 +361,7 @@ ipcMain.handle('record-payment', async (event, { seller_id, amount, notes }) => 
                     [txn.id]
                 );
                 remainingToPay -= txnOwed;
+                lastUpdatedTransaction = txn;
             } else { 
                 // Partially pay this txn
                 await db.run(
@@ -357,45 +369,43 @@ ipcMain.handle('record-payment', async (event, { seller_id, amount, notes }) => 
                     [remainingToPay, txn.id]
                 );
                 remainingToPay = 0;
+                lastUpdatedTransaction = txn;
             }
         }
 
-        const newBalance = previousBalance - amount;
-
-        // 2. Update seller balance
+        // 2. Update seller's total balance
         await db.run(
-            'UPDATE sellers SET total_balance_owed = ?, last_transaction_date = CURRENT_TIMESTAMP WHERE id = ?',
-            [newBalance, seller_id]
+            'UPDATE sellers SET total_balance_owed = total_balance_owed - ? WHERE id = ?',
+            [amount, seller_id]
         );
 
         // 3. Record in payments table
-        const paymentResult = await db.run(
+        const pmt = await db.run(
             'INSERT INTO payments (seller_id, amount, previous_balance, new_balance, notes) VALUES (?, ?, ?, ?, ?)',
-            [seller_id, amount, previousBalance, newBalance, notes]
+            [seller_id, amount, previousBalance, previousBalance - amount, notes]
         );
 
         // 4. Print payment receipt
         try {
-            const updatedSeller = await db.get('SELECT * FROM sellers WHERE id = ?', [seller_id]);
-            // Fetch oldest unpaid txn for original date reference
-            const oldestUnpaid = await db.get(
-                'SELECT created_at FROM transactions WHERE seller_id = ? ORDER BY created_at ASC LIMIT 1',
-                [seller_id]
-            );
-
-            const printResult = await printer.printPaymentReceipt({ 
-                seller: updatedSeller, 
-                amount: amount, 
-                notes: notes,
-                previousBalance: previousBalance,
-                newBalance: newBalance,
-                originalDate: oldestUnpaid ? oldestUnpaid.created_at : updatedSeller.created_at
+            // Use the transaction number from the last affected transaction to link them
+            const transactionNumber = lastUpdatedTransaction ? lastUpdatedTransaction.transaction_number : 'PAYMENT';
+            
+            await printer.printPaymentReceipt({
+                seller,
+                amount,
+                notes,
+                previousBalance,
+                newBalance: previousBalance - amount,
+                originalDate: lastUpdatedTransaction ? lastUpdatedTransaction.created_at : new Date(),
+                transactionNumber // Pass the linked transaction number
             });
-            return { success: true, paymentId: paymentResult.id, printSuccess: printResult.success, error: printResult.error };
         } catch (printErr) {
             console.error('Payment receipt printing failed', printErr);
-            return { success: true, paymentId: paymentResult.id, printSuccess: false, error: printErr.message };
+            // Return success anyway as DB is updated, but notify user
+            return { success: true, warning: 'Payment recorded, but printer failed.' };
         }
+
+        return { success: true };
     } catch (err) {
         console.error('Record payment failed', err);
         return { success: false, error: err.message };
@@ -456,12 +466,13 @@ ipcMain.handle('get-printers', async () => {
     return await mainWindow.webContents.getPrintersAsync();
 });
 
-ipcMain.handle('save-pdf', async (event, { filename, base64Data }) => {
-    const { dialog } = require('electron');
+ipcMain.handle('save-pdf', async (event, { filename, base64Data, printDirectly }) => {
+    const { dialog, shell } = require('electron');
     const fs = require('fs');
+    const path = require('path');
     
     const { filePath } = await dialog.showSaveDialog(mainWindow, {
-        title: 'Save Receipt PDF',
+        title: 'Save Report PDF',
         defaultPath: filename,
         filters: [{ name: 'PDF Files', extensions: ['pdf'] }]
     });
@@ -469,6 +480,12 @@ ipcMain.handle('save-pdf', async (event, { filename, base64Data }) => {
     if (filePath) {
         const buffer = Buffer.from(base64Data, 'base64');
         fs.writeFileSync(filePath, buffer);
+
+        // If printDirectly is true, open the PDF immediately so the user can print it
+        if (printDirectly) {
+            await shell.openPath(filePath);
+        }
+
         return { success: true, filePath };
     }
     return { success: false };

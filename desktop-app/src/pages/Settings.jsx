@@ -11,6 +11,7 @@ const Settings = ({ shopSettings, onSettingsUpdate }) => {
     // Shop Details State
     const [shopName, setShopName] = useState(shopSettings.shop_name || '');
     const [shopLogo, setShopLogo] = useState(shopSettings.shop_logo || '');
+    const [apiUrl, setApiUrl] = useState(shopSettings.api_url || 'http://192.168.55.103:8000/api');
 
     // Cashier Management State
     const [cashiers, setCashiers] = useState([]);
@@ -94,6 +95,7 @@ const Settings = ({ shopSettings, onSettingsUpdate }) => {
         try {
             await window.electron.saveSetting('shop_name', shopName);
             await window.electron.saveSetting('shop_logo', shopLogo);
+            await window.electron.saveSetting('api_url', apiUrl);
             
             await Swal.fire({
                 title: 'Shop Details Saved',
@@ -199,6 +201,18 @@ const Settings = ({ shopSettings, onSettingsUpdate }) => {
                                         className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all outline-none font-bold text-slate-900"
                                         placeholder="Enter shop name"
                                     />
+                                </div>
+
+                                <div className="space-y-3">
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Server API URL</label>
+                                    <input 
+                                        type="text" 
+                                        value={apiUrl}
+                                        onChange={(e) => setApiUrl(e.target.value)}
+                                        className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all outline-none font-bold text-slate-900"
+                                        placeholder="http://192.168.55.103:8000/api"
+                                    />
+                                    <p className="text-[10px] text-slate-400 italic font-bold">This is used for license activation and updates.</p>
                                 </div>
 
                                 <div className="flex flex-col sm:flex-row gap-4 pt-4">
