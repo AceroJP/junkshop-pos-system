@@ -34,3 +34,27 @@ This is the most common reason it fails. Your laptop's Firewall might block the 
 - Your Laptop : Acts as the "Cloud Hub."
 - Other PCs : Connect to your laptop using your LAN IP ( 192.168.55.111 ) instead of a website name.
 - Limit : This only works while they are on the same Wi-Fi. If you take the other PC to a different building, it won't connect until you put the server on a "Live" website.
+
+### 5. Thermal Printer Setup
+To ensure the POS app recognizes and works correctly with your thermal printer on any device:
+
+1. **Install Driver**: Install the official thermal printer driver on the Windows device. The printer should appear in the Windows **"Printers & Scanners"** list.
+2. **Select in App**:
+   - Open the Junkshop POS app.
+   - Navigate to the **Settings** page.
+   - In the **Printer Setup** section, select your thermal printer from the dropdown menu.
+   - Choose the protocol (usually **EPSON (ESC/POS)**).
+   - Click **Save Printer Configuration**.
+3. **Test Print**: Click **Print Test Page** to verify the connection.
+4. **Reliability Tip (Sharing)**: If the printer is not recognized or the driver is unstable:
+   - Go to Windows **Printers & Scanners** > [Your Printer] > **Printer Properties**.
+   - Go to the **Sharing** tab and check **"Share this printer"**.
+   - Give it a simple share name like `POS-Printer`.
+   - This allows the app to use its fallback printing method for better reliability.
+
+### 6. Licensing & Activation
+Currently, the POS app is configured as a **Community Version**, which means:
+
+- **No Key Required**: You do not need a license key to install or run the app on new devices. 
+- **Automatic Activation**: The activation screen is bypassed automatically.
+- **Setup Flow**: New installations will proceed directly to the **Initial Setup** screen (where you set the shop name and admin password).
