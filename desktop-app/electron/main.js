@@ -491,10 +491,15 @@ ipcMain.handle('save-pdf', async (event, { filename, base64Data, printDirectly }
     return { success: false };
 });
 
-ipcMain.handle('get-report-stats', async (event, { period }) => {
+ipcMain.handle('get-report-stats', async (event, { period, startDate, endDate }) => {
     try {
         let dateFilter = "";
-        if (period === 'today') {
+        const params = [];
+
+        if (period === 'custom' && startDate && endDate) {
+            dateFilter = "date(created_at) BETWEEN date(?) AND date(?)";
+            params.push(startDate, endDate);
+        } else if (period === 'today') {
             dateFilter = "date(created_at) = date('now')";
         } else if (period === 'week') {
             dateFilter = "date(created_at) >= date('now', '-7 days')";
@@ -507,7 +512,7 @@ ipcMain.handle('get-report-stats', async (event, { period }) => {
         }
 
         // 1. Total Purchases for period
-        const purchases = await db.get(`SELECT SUM(total_amount) as total FROM transactions WHERE ${dateFilter}`);
+        const purchases = await db.get(`SELECT SUM(total_amount) as total FROM transactions WHERE ${dateFilter}`, params);
         
         // 2. Grand Total (Overall Purchases regardless of period)
         const grandTotal = await db.get(`SELECT SUM(total_amount) as total FROM transactions`);
@@ -521,7 +526,7 @@ ipcMain.handle('get-report-stats', async (event, { period }) => {
             WHERE ${dateFilter.replace(/created_at/g, 't.created_at')}
             GROUP BY p.id 
             ORDER BY total_amount DESC
-        `);
+        `, params);
 
         // 4. Transactions for the period
         const transactions = await db.all(`
@@ -530,7 +535,7 @@ ipcMain.handle('get-report-stats', async (event, { period }) => {
             LEFT JOIN users u ON t.cashier_id = u.id 
             WHERE ${dateFilter.replace(/created_at/g, 't.created_at')}
             ORDER BY t.created_at DESC
-        `);
+        `, params);
 
         // 5. Total Balance Owed (Current outstanding debt)
         const balanceOwed = await db.get(`SELECT SUM(total_balance_owed) as total FROM sellers`);
@@ -558,6 +563,16 @@ ipcMain.handle('get-report-stats', async (event, { period }) => {
     } catch (err) {
         console.error('Report stats failed', err);
         return { success: false, error: err.message };
+    }
+});
+
+ipcMain.handle('get-transaction-dates', async () => {
+    try {
+        const rows = await db.all("SELECT DISTINCT date(created_at) as date FROM transactions ORDER BY date ASC");
+        return rows.map(r => r.date);
+    } catch (err) {
+        console.error('Fetch transaction dates failed', err);
+        return [];
     }
 });
 

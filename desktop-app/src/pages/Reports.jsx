@@ -8,6 +8,11 @@ import { generateReportPDF } from '../utils/pdfGenerator';
 
 const Reports = ({ shopSettings }) => {
     const [period, setPeriod] = useState('overall');
+    const [transactionDates, setTransactionDates] = useState([]);
+    const [customDates, setCustomDates] = useState({
+        start: new Date().toISOString().split('T')[0],
+        end: new Date().toISOString().split('T')[0]
+    });
     const [stats, setStats] = useState({ 
         totalPurchases: 0, 
         grandTotal: 0, 
@@ -25,6 +30,7 @@ const Reports = ({ shopSettings }) => {
     useEffect(() => {
         setIsMounted(true);
         loadStats();
+        loadTransactionDates();
 
         // Close dropdown when clicking outside
         const handleClickOutside = (event) => {
@@ -34,12 +40,25 @@ const Reports = ({ shopSettings }) => {
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [period, showExportDropdown]);
+    }, [period, customDates, showExportDropdown]);
+
+    const loadTransactionDates = async () => {
+        try {
+            const dates = await window.electron.getTransactionDates();
+            setTransactionDates(dates || []);
+        } catch (err) {
+            console.error('Failed to load transaction dates', err);
+        }
+    };
 
     const loadStats = async () => {
         setLoading(true);
         try {
-            const result = await window.electron.getReportStats({ period });
+            const result = await window.electron.getReportStats({ 
+                period,
+                startDate: period === 'custom' ? customDates.start : null,
+                endDate: period === 'custom' ? customDates.end : null
+            });
             if (result.success) {
                 setStats({
                     totalPurchases: result.totalPurchases || 0,
@@ -57,22 +76,33 @@ const Reports = ({ shopSettings }) => {
         }
     };
 
-    const handleExport = async (exportPeriod) => {
+    const handleExport = async (exportPeriod, exportStartDate = null, exportEndDate = null) => {
         try {
             // Get data for the specific export period
-            const result = await window.electron.getReportStats({ period: exportPeriod });
+            const result = await window.electron.getReportStats({ 
+                period: exportPeriod,
+                startDate: exportStartDate,
+                endDate: exportEndDate
+            });
             if (!result.success) throw new Error(result.error);
 
-            // Fetch transactions for detailed export
+            // Fetch all transactions and filter them appropriately
             const allTransactions = await window.electron.getTransactions();
             let filteredTransactions = [];
             const now = new Date();
-            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
 
-            if (exportPeriod === 'today') {
-                filteredTransactions = allTransactions.filter(t => new Date(t.created_at + ' UTC').getTime() >= today);
+            if (exportPeriod === 'custom' && exportStartDate && exportEndDate) {
+                const start = new Date(exportStartDate).getTime();
+                const end = new Date(exportEndDate).setHours(23, 59, 59, 999);
+                filteredTransactions = allTransactions.filter(t => {
+                    const tDate = new Date(t.created_at + ' UTC').getTime();
+                    return tDate >= start && tDate <= end;
+                });
+            } else if (exportPeriod === 'today') {
+                filteredTransactions = allTransactions.filter(t => new Date(t.created_at + ' UTC').getTime() >= todayStart);
             } else if (exportPeriod === 'week') {
-                const weekAgo = today - (7 * 24 * 60 * 60 * 1000);
+                const weekAgo = todayStart - (7 * 24 * 60 * 60 * 1000);
                 filteredTransactions = allTransactions.filter(t => new Date(t.created_at + ' UTC').getTime() >= weekAgo);
             } else if (exportPeriod === 'month') {
                 const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
@@ -90,7 +120,7 @@ const Reports = ({ shopSettings }) => {
                 transactions: filteredTransactions
             };
 
-            const pdfResult = await generateReportPDF(reportData, shopSettings, exportPeriod);
+            const pdfResult = await generateReportPDF(reportData, shopSettings, exportPeriod, exportStartDate, exportEndDate);
             
             // This will trigger the system print dialog in Electron
             if (window.electron && window.electron.savePDF) {
@@ -114,6 +144,59 @@ const Reports = ({ shopSettings }) => {
         } catch (err) {
             console.error('Export failed', err);
             Swal.fire('Error', 'Failed to export report.', 'error');
+        }
+    };
+
+    const handleCustomExport = async () => {
+        // Create a small HTML string for active dates
+        const activeDatesHtml = transactionDates.length > 0 
+            ? `<div class="mt-4 pt-4 border-t border-slate-100">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest text-left mb-2">Available Transaction Dates:</p>
+                <div class="flex flex-wrap gap-2">
+                    ${transactionDates.slice(-8).reverse().map(date => `
+                        <button onclick="document.getElementById('swal-start').value='${date}';document.getElementById('swal-end').value='${date}';" 
+                                class="px-2 py-1 bg-brand-50 text-brand-600 rounded-md text-[9px] font-black border border-brand-100 hover:bg-brand-100 transition-colors">
+                            ${new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </button>
+                    `).join('')}
+                </div>
+               </div>`
+            : '';
+
+        const { value: formValues } = await Swal.fire({
+            title: 'Custom Date Range',
+            html: `
+                <div class="space-y-4 p-4">
+                    <div class="flex flex-col gap-2 text-left">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Start Date</label>
+                        <input id="swal-start" type="date" class="swal2-input !m-0 !w-full !rounded-xl !border-slate-100 !text-xs" value="${customDates.start}">
+                    </div>
+                    <div class="flex flex-col gap-2 mt-4 text-left">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">End Date</label>
+                        <input id="swal-end" type="date" class="swal2-input !m-0 !w-full !rounded-xl !border-slate-100 !text-xs" value="${customDates.end}">
+                    </div>
+                    ${activeDatesHtml}
+                </div>
+            `,
+            focusConfirm: false,
+            showCancelButton: true,
+            confirmButtonText: 'Export PDF',
+            confirmButtonColor: '#0ea5e9',
+            customClass: {
+                popup: 'rounded-[2rem]',
+                confirmButton: 'rounded-xl font-black uppercase tracking-widest text-xs px-8 py-3',
+                cancelButton: 'rounded-xl font-black uppercase tracking-widest text-xs px-8 py-3'
+            },
+            preConfirm: () => {
+                return {
+                    start: document.getElementById('swal-start').value,
+                    end: document.getElementById('swal-end').value
+                }
+            }
+        });
+
+        if (formValues) {
+            handleExport('custom', formValues.start, formValues.end);
         }
     };
 
@@ -154,6 +237,16 @@ const Reports = ({ shopSettings }) => {
                                     <span className="text-[11px] font-black text-slate-600 uppercase tracking-widest group-hover:text-brand-600">Export {p}</span>
                                 </button>
                             ))}
+                            <button 
+                                onClick={() => {
+                                    handleCustomExport();
+                                    setShowExportDropdown(false);
+                                }}
+                                className="w-full text-left px-5 py-3 hover:bg-slate-50 transition-colors flex items-center gap-3 group border-t border-slate-50 mt-1"
+                            >
+                                <div className="w-2 h-2 rounded-full bg-slate-200 group-hover:bg-brand-500 transition-colors"></div>
+                                <span className="text-[11px] font-black text-slate-600 uppercase tracking-widest group-hover:text-brand-600">Custom Range</span>
+                            </button>
                         </div>
                     )}
                 </div>
@@ -175,6 +268,62 @@ const Reports = ({ shopSettings }) => {
                                     {p}
                                 </button>
                             ))}
+                        </div>
+
+                        {/* Custom Date Inputs */}
+                        <div className="pt-4 border-t border-slate-50 space-y-3">
+                            <button 
+                                onClick={() => setPeriod('custom')}
+                                className={`w-full px-4 py-3 rounded-xl font-black text-[10px] lg:text-xs uppercase tracking-widest transition-all text-center md:text-left ${period === 'custom' ? 'bg-brand-600 text-white shadow-lg shadow-brand-100' : 'text-slate-500 hover:bg-slate-50'}`}
+                            >
+                                Custom Range
+                            </button>
+                            
+                            {period === 'custom' && (
+                                <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="space-y-1">
+                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">From</label>
+                                        <input 
+                                            type="date" 
+                                            value={customDates.start}
+                                            onChange={(e) => setCustomDates(prev => ({ ...prev, start: e.target.value }))}
+                                            className="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg text-[10px] font-bold text-slate-700 outline-none focus:border-brand-500 transition-colors"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">To</label>
+                                        <input 
+                                            type="date" 
+                                            value={customDates.end}
+                                            onChange={(e) => setCustomDates(prev => ({ ...prev, end: e.target.value }))}
+                                            className="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg text-[10px] font-bold text-slate-700 outline-none focus:border-brand-500 transition-colors"
+                                        />
+                                    </div>
+
+                                    {/* Transaction Date Indicators */}
+                                    <div className="pt-4 border-t border-slate-50">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 px-1">Dates with Transactions</p>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {transactionDates.slice(-10).reverse().map(date => (
+                                                <button
+                                                    key={date}
+                                                    onClick={() => {
+                                                        setCustomDates({ start: date, end: date });
+                                                    }}
+                                                    className="px-2 py-1 bg-brand-50 hover:bg-brand-100 text-brand-600 rounded-md text-[9px] font-bold border border-brand-100 transition-colors flex items-center gap-1"
+                                                >
+                                                    <span className="w-1 h-1 bg-brand-500 rounded-full animate-pulse"></span>
+                                                    {new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                </button>
+                                            ))}
+                                            {transactionDates.length === 0 && (
+                                                <p className="text-[9px] text-slate-300 font-bold italic px-1">No transactions recorded yet</p>
+                                            )}
+                                        </div>
+                                        <p className="text-[8px] text-slate-300 font-bold uppercase tracking-tighter mt-2 px-1">Tip: Click a date to select it</p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 

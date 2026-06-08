@@ -103,7 +103,7 @@ export const generateReceiptPDF = async (transaction, items, shopSettings) => {
     };
 };
 
-export const generateReportPDF = async (reportData, shopSettings, period) => {
+export const generateReportPDF = async (reportData, shopSettings, period, startDate, endDate) => {
     const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
@@ -113,75 +113,54 @@ export const generateReportPDF = async (reportData, shopSettings, period) => {
     const shopName = shopSettings.shop_name || 'JUNKSHOP POS SYSTEM';
     const shopLogo = shopSettings.shop_logo;
     const reportDate = new Date().toLocaleDateString();
-    const reportTitle = `${period.toUpperCase()} REPORT`;
-
-    // Function to add Header and Footer to each page
-    const addHeaderFooter = (data) => {
-        // --- Header ---
-        let currentY = 15;
-        if (shopLogo) {
-            try {
-                // Center the logo
-                // Assuming logo is roughly square, 20x20mm
-                doc.addImage(shopLogo, 'PNG', 105 - 10, currentY, 20, 20);
-                currentY += 25;
-            } catch (err) {
-                console.error('Failed to add logo to PDF', err);
-            }
-        }
-
-        doc.setFontSize(18);
-        doc.setFont('helvetica', 'bold');
-        doc.text(shopName.toUpperCase(), 105, currentY, { align: 'center' });
-        currentY += 10;
-
-        doc.setFontSize(14);
-        doc.text(reportTitle, 105, currentY, { align: 'center' });
-        currentY += 5;
-        
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Generated on: ${reportDate}`, 105, currentY, { align: 'center' });
-        
-        // Line separator
-        doc.setDrawColor(200, 200, 200);
-        doc.line(15, currentY + 5, 195, currentY + 5);
-
-        // --- Footer ---
-        const pageCount = doc.internal.getNumberOfPages();
-        doc.setFontSize(10);
-        doc.text(`Page ${data.pageNumber} of ${pageCount}`, 105, 285, { align: 'center' });
-    };
+    
+    let reportTitle = `${period.toUpperCase()} REPORT`;
+    let periodStr = "";
+    if (period === 'custom' && startDate && endDate) {
+        periodStr = `${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}`;
+    }
 
     // --- Content: Summary Table ---
     const summaryHead = [['Item Name', 'Total Weight (kg)', 'Total Purchases']];
     const summaryBody = reportData.summary.map(p => [
         p.name,
         p.total_weight.toFixed(2),
-        `PHP ${p.total_amount.toFixed(2)}`
+        `PHP ${p.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     ]);
+
+    const totalPurchases = reportData.summary.reduce((acc, p) => acc + p.total_amount, 0);
+    const totalWeight = reportData.summary.reduce((acc, p) => acc + p.total_weight, 0);
+
+    // Add Total Row to Summary Body
+    summaryBody.push([
+        { content: 'TOTAL', colSpan: 1, styles: { halign: 'right', fontStyle: 'bold', fillColor: [241, 245, 249] } },
+        { content: `${totalWeight.toFixed(2)} kg`, styles: { halign: 'center', fontStyle: 'bold', fillColor: [241, 245, 249] } },
+        { content: `PHP ${totalPurchases.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right', fontStyle: 'bold', fillColor: [241, 245, 249] } }
+    ]);
+
+    // Content starts after header space
+    const contentStartY = shopLogo ? 75 : 50;
 
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text('SCRAP SALES SUMMARY', 15, shopLogo ? 65 : 45);
+    doc.text('SCRAP SALES SUMMARY', 15, contentStartY);
 
     autoTable(doc, {
-        startY: shopLogo ? 70 : 50,
+        startY: contentStartY + 5,
         head: summaryHead,
         body: summaryBody,
         theme: 'grid',
         headStyles: { fillColor: [14, 165, 233], textColor: 255, fontStyle: 'bold' },
         styles: { fontSize: 10, cellPadding: 3 },
+        margin: { top: contentStartY + 5, bottom: 25 },
+        columnStyles: {
+            0: { cellWidth: 'auto' },
+            1: { cellWidth: 40, halign: 'center' },
+            2: { cellWidth: 50, halign: 'right' }
+        }
     });
 
-    const totalPurchases = reportData.summary.reduce((acc, p) => acc + p.total_amount, 0);
-    const totalWeight = reportData.summary.reduce((acc, p) => acc + p.total_weight, 0);
-
-    const summaryY = doc.lastAutoTable.finalY + 10;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`TOTAL WEIGHT: ${totalWeight.toFixed(2)} kg`, 195, summaryY, { align: 'right' });
-    doc.text(`GRAND TOTAL: PHP ${totalPurchases.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 195, summaryY + 6, { align: 'right' });
+    const summaryY = doc.lastAutoTable.finalY + 15;
 
     // --- Content: Transactions Table ---
     const transHead = [['ID', 'Date', 'Time', 'Customer', 'Cashier', 'Total']];
@@ -191,24 +170,21 @@ export const generateReportPDF = async (reportData, shopSettings, period) => {
         new Date(t.created_at + ' UTC').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         t.customer_name || 'Walk-in',
         t.cashier_name || 'System',
-        `PHP ${t.total_amount.toFixed(2)}`
+        `PHP ${t.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     ]);
 
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text('TRANSACTION DETAILS', 15, doc.lastAutoTable.finalY + 15);
+    doc.text('TRANSACTION DETAILS', 15, summaryY);
 
     autoTable(doc, {
-        startY: doc.lastAutoTable.finalY + 20,
+        startY: summaryY + 5,
         head: transHead,
         body: transBody,
         theme: 'striped',
-        headStyles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold' },
-        styles: { fontSize: 9, cellPadding: 2 },
-        didDrawPage: (data) => {
-            // This will be called after each page is drawn
-            // We'll use a second pass to add header/footer because we need total page count
-        }
+        headStyles: { fillColor: [51, 65, 85], textColor: 255, fontStyle: 'bold' },
+        styles: { fontSize: 9, cellPadding: 3 },
+        margin: { top: contentStartY + 5, bottom: 25 }
     });
 
     // --- Add Header and Footer to all pages ---
@@ -224,16 +200,28 @@ export const generateReportPDF = async (reportData, shopSettings, period) => {
                 currentY += 25;
             } catch (err) {}
         }
+        
         doc.setFontSize(18);
         doc.setFont('helvetica', 'bold');
         doc.text(shopName.toUpperCase(), 105, currentY, { align: 'center' });
-        currentY += 8;
-        doc.setFontSize(12);
+        currentY += 10;
+
+        doc.setFontSize(14);
         doc.text(reportTitle, 105, currentY, { align: 'center' });
-        currentY += 5;
+        currentY += 6;
+
+        if (periodStr) {
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.text(periodStr, 105, currentY, { align: 'center' });
+            currentY += 5;
+        }
+        
         doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
         doc.text(`Generated on: ${reportDate}`, 105, currentY, { align: 'center' });
+        
+        doc.setDrawColor(200, 200, 200);
         doc.line(15, currentY + 3, 195, currentY + 3);
 
         // Footer
