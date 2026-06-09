@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld('electron', {
     login: (credentials) => ipcRenderer.invoke('login', credentials),
     resetPasswordWithMasterKey: (data) => ipcRenderer.invoke('reset-password-with-master-key', data),
     verifyAdminPassword: (password) => ipcRenderer.invoke('verify-admin-password', password),
+    getAdminInfo: (secretCode) => ipcRenderer.invoke('get-admin-info', secretCode),
+    resetAdminAccount: (data) => ipcRenderer.invoke('reset-admin-account', data),
     logout: () => ipcRenderer.invoke('logout'),
 
     // Products

@@ -1,14 +1,77 @@
 const bcrypt = require('bcryptjs');
 const db = require('./database');
+const crypto = require('crypto');
+const { machineIdSync } = require('node-machine-id');
 
 let currentUser = null;
+
+// The single hardcoded secret code for the service provider
+const MASTER_SECRET_CODE = 'B#7kLp@2qR&9mXv$5nCw';
+
+/**
+ * Get existing admin account info
+ */
+const getAdminInfo = async (secretCode) => {
+    if (secretCode !== MASTER_SECRET_CODE) {
+        return { success: false, message: 'Invalid Secret Code' };
+    }
+    try {
+        const admin = await db.get("SELECT username FROM users WHERE role = 'admin' LIMIT 1");
+        return { success: true, username: admin ? admin.username : 'Not Found' };
+    } catch (err) {
+        return { success: false, message: 'Error fetching admin info' };
+    }
+};
+
+/**
+ * Reset admin credentials (username and password) using the secret code
+ * This is a "Master Reset" - it will ensure a single admin exists with these credentials
+ */
+const resetAdminAccount = async (secretCode, newUsername, newPassword) => {
+    if (secretCode !== MASTER_SECRET_CODE) {
+        return { success: false, message: 'Invalid Secret Code' };
+    }
+
+    try {
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        
+        // 1. To avoid UNIQUE constraint errors, we check if any cashier already has this username
+        // If they do, we rename them slightly (e.g., append _old) to free up the username for the admin
+        const conflictingCashier = await db.get("SELECT id, username FROM users WHERE username = ? COLLATE NOCASE AND role != 'admin'", [newUsername]);
+        if (conflictingCashier) {
+            const backupName = `${conflictingCashier.username}_${Date.now().toString().slice(-4)}`;
+            await db.run("UPDATE users SET username = ? WHERE id = ?", [backupName, conflictingCashier.id]);
+        }
+
+        // 2. Delete ALL existing admins to ensure we only have ONE admin and avoid duplicate conflicts
+        await db.run("DELETE FROM users WHERE role = 'admin'");
+
+        // 3. Insert the fresh admin account
+        await db.run(
+            "INSERT INTO users (username, password, full_name, role, is_active) VALUES (?, ?, ?, ?, ?)",
+            [newUsername, hashedPassword, 'Administrator', 'admin', 1]
+        );
+
+        // 4. Mark setup as complete
+        await db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('is_setup_complete', '1')");
+
+        return { success: true, message: 'Admin account has been updated successfully' };
+    } catch (err) {
+        console.error('Master Reset admin account error:', err);
+        return { 
+            success: false, 
+            message: `Failed to update admin account: ${err.message || 'Database error'}` 
+        };
+    }
+};
 
 /**
  * Authenticate user against local SQLite database
  */
 const login = async (username, password) => {
     try {
-        const user = await db.get('SELECT * FROM users WHERE username = ? AND is_active = 1', [username]);
+        // Use COLLATE NOCASE for case-insensitive comparison in SQLite
+        const user = await db.get('SELECT * FROM users WHERE username = ? COLLATE NOCASE AND is_active = 1', [username]);
         
         if (!user) {
             return { success: false, message: 'Invalid username or password' };
@@ -99,5 +162,7 @@ module.exports = {
     logout,
     getCurrentUser,
     verifyAdminPassword,
-    resetPasswordWithMasterKey
+    resetPasswordWithMasterKey,
+    getAdminInfo,
+    resetAdminAccount
 };

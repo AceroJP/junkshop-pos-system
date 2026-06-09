@@ -13,7 +13,17 @@ if (!fs.existsSync(dbDir)) {
 }
 
 const dbPath = path.join(dbDir, 'database.db');
-const schemaPath = path.join(__dirname, '../database/schema.sql');
+
+// Schema path adjustment for packaged app
+let schemaPath;
+if (isDev) {
+    schemaPath = path.join(__dirname, '../database/schema.sql');
+} else {
+    // In packaged app, check both inside ASAR and extraResources
+    const asarPath = path.join(process.resourcesPath, 'app.asar', 'database', 'schema.sql');
+    const extraPath = path.join(process.resourcesPath, 'database', 'schema.sql');
+    schemaPath = fs.existsSync(asarPath) ? asarPath : extraPath;
+}
 
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
@@ -52,8 +62,13 @@ async function ensureAdminUser() {
 }
 
 function initializeDatabase() {
-    const schema = fs.readFileSync(schemaPath, 'utf8');
-    db.exec(schema, (err) => {
+    try {
+        if (!fs.existsSync(schemaPath)) {
+            console.error('Schema file not found at:', schemaPath);
+            return;
+        }
+        const schema = fs.readFileSync(schemaPath, 'utf8');
+        db.exec(schema, (err) => {
         if (err) {
             console.error('Error initializing database schema', err);
         } else {
@@ -91,6 +106,9 @@ function initializeDatabase() {
             fixSettings();
         }
     });
+    } catch (err) {
+        console.error('Critical error in initializeDatabase:', err);
+    }
 }
 
 /**

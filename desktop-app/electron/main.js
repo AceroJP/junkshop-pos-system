@@ -139,6 +139,15 @@ ipcMain.handle('verify-admin-password', async (event, password) => {
     return await auth.verifyAdminPassword(password);
 });
 
+ipcMain.handle('get-admin-info', async (event, secretCode) => {
+    return await auth.getAdminInfo(secretCode);
+});
+
+ipcMain.handle('reset-admin-account', async (event, data) => {
+    const { secretCode, newUsername, newPassword } = data;
+    return await auth.resetAdminAccount(secretCode, newUsername, newPassword);
+});
+
 ipcMain.handle('delete-transaction', async (event, transactionId) => {
     try {
         // 1. Get transaction details for balance reversal
