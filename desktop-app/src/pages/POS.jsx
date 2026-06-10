@@ -300,7 +300,13 @@ const POS = ({ user, openModal }) => {
                                 placeholder="Name" 
                                 value={customerName}
                                 onChange={(e) => setCustomerName(e.target.value)}
-                                className="w-full bg-white border-2 border-slate-100 rounded-lg lg:rounded-xl px-3 lg:px-4 py-1.5 lg:py-2 text-[11px] lg:text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/5 outline-none transition-all"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && cart.length > 0) {
+                                        e.preventDefault();
+                                        openCheckoutModal();
+                                    }
+                                }}
+                                className="w-full bg-white border border-slate-200 rounded-lg lg:rounded-xl px-3 lg:px-4 py-1.5 lg:py-2 text-[11px] lg:text-sm font-bold text-slate-900 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/5 outline-none transition-all placeholder:text-slate-300"
                             />
                         </div>
                     </div>

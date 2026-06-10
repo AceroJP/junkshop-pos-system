@@ -693,6 +693,12 @@ function App() {
                         autoFocus
                         value={modalData.weight}
                         onChange={(e) => modalData.setWeight(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            modalData.onConfirm();
+                          }
+                        }}
                         placeholder="0.00"
                         className="w-full px-6 py-5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all outline-none font-black text-2xl text-center"
                       />
