@@ -1,8 +1,9 @@
 services:
   - type: web
-    name: junkshop-web-admin
+    name: junkshop-pos-website
     env: php
     plan: starter
+    rootDir: web-admin
     buildCommand: |
       composer install --no-dev --optimize-autoloader
       npm install
@@ -12,7 +13,14 @@ services:
       php artisan route:cache
       php artisan view:cache
     startCommand: |
+      mkdir -p /tmp/storage
+      mkdir -p /tmp/storage/framework
+      mkdir -p /tmp/storage/framework/sessions
+      mkdir -p /tmp/storage/framework/views
+      mkdir -p /tmp/storage/framework/cache
+      chmod -R 775 /tmp/storage
       php artisan migrate --force
+      php artisan db:seed --force
       heroku-php-apache2 public/
     envVars:
       - key: APP_ENV
@@ -22,25 +30,17 @@ services:
       - key: APP_URL
         fromService:
           type: web
-          name: junkshop-web-admin
+          name: junkshop-pos-website
           property: host
       - key: LOG_CHANNEL
         value: stderr
       - key: SESSION_DRIVER
-        value: database
+        value: file
       - key: CACHE_STORE
-        value: database
+        value: file
       - key: FILESYSTEM_DISK
         value: local
       - key: DB_CONNECTION
-        value: pgsql
-      - key: DATABASE_URL
-        fromDatabase:
-          name: junkshop-db
-          property: connectionString
-
-databases:
-  - name: junkshop-db
-    plan: starter
-    databaseName: junkshop
-    user: junkshop
+        value: sqlite
+      - key: DB_DATABASE
+        value: /tmp/database.sqlite
