@@ -249,10 +249,18 @@ const Login = ({ onLogin, shopSettings }) => {
                         </div>
                     </form>
 
-                    <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-slate-50 text-center shrink-0">
+                    <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-slate-50 text-center shrink-0 space-y-2">
                         <p className="text-[8px] sm:text-[9px] font-black text-slate-300 uppercase tracking-[0.4em]">
                             Authorized Access Only
                         </p>
+                        <div className="pt-2">
+                            <p className="text-[7px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+                                © {new Date().getFullYear()} All Rights Reserved
+                            </p>
+                            <p className="text-[7px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+                                Developed by <span className="text-brand-500">Joenil Acero</span>
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -178,6 +178,16 @@ const Setup = ({ onComplete }) => {
                     )}
                 </div>
             </div>
+
+            {/* Developer Credits */}
+            <div className="mt-8 text-center space-y-1 animate-fade-in delay-500">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">
+                    © {new Date().getFullYear()} All Rights Reserved
+                </p>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">
+                    Developed by <span className="text-brand-500">Joenil Acero</span>
+                </p>
+            </div>
         </div>
     );
 };

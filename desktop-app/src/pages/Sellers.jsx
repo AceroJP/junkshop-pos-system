@@ -5,7 +5,7 @@ const Sellers = ({ openModal }) => {
     const [sellers, setSellers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
-    const [filter, setFilter] = useState('all'); // 'all', 'balance'
+    const [filter, setFilter] = useState('balance'); // 'all', 'balance'
     const [selectedSeller, setSelectedSeller] = useState(null);
     const [sellerTransactions, setSellerTransactions] = useState([]);
     const [payments, setPayments] = useState([]);
@@ -297,9 +297,6 @@ const Sellers = ({ openModal }) => {
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="bg-transparent outline-none text-sm font-bold w-full text-slate-900 placeholder:text-slate-400" 
                             />
-                        </div>
-                        <div className="flex bg-white p-1 rounded-2xl border-2 border-slate-100 shrink-0">
-                            <button onClick={() => setFilter('all')} className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${filter === 'all' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>With Balance</button>
                         </div>
                     </div>
 

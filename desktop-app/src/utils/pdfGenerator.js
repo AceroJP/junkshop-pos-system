@@ -19,7 +19,7 @@ export const generateReceiptPDF = async (transaction, items, shopSettings) => {
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text('OFFICIAL RECEIPT', 105, 28, { align: 'center' });
+    doc.text('TEMPORARY PURCHASE RECEIPT', 105, 28, { align: 'center' });
 
     // --- Transaction Info ---
     doc.setDrawColor(200, 200, 200);
@@ -132,7 +132,7 @@ export const generatePriceListPDF = async (products, shopSettings) => {
     currentY += 15; // Space before table
 
     // --- Table ---
-    const activeProducts = products.filter(p => p.status !== 'inactive');
+    const activeProducts = products.filter(p => p.is_active);
     const tableData = activeProducts.map(p => [
         p.name.toUpperCase(),
         `P ${p.price_per_kg.toFixed(2)}`

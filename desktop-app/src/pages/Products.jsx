@@ -5,6 +5,7 @@ import { generatePriceListPDF } from '../utils/pdfGenerator';
 const Products = ({ shopSettings, openModal }) => {
     const [products, setProducts] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'active', 'inactive'
     const [editingProduct, setEditingProduct] = useState(null);
     const [loading, setLoading] = useState(false);
     const [printing, setPrinting] = useState(false);
@@ -190,9 +191,13 @@ const Products = ({ shopSettings, openModal }) => {
         reader.readAsDataURL(file);
     };
 
-    const filteredProducts = products.filter(product => 
-        product.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredProducts = products.filter(product => {
+        const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus = statusFilter === 'all' ? true : 
+                            statusFilter === 'active' ? product.is_active : 
+                            !product.is_active;
+        return matchesSearch && matchesStatus;
+    });
 
     return (
         <div className="max-w-6xl mx-auto space-y-10 animate-fade-in pb-20">
@@ -204,16 +209,34 @@ const Products = ({ shopSettings, openModal }) => {
                 </div>
                 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-                    <div className="bg-white border-2 border-slate-100 h-14 w-full sm:w-64 rounded-2xl flex items-center px-4 gap-3 focus-within:ring-4 focus-within:ring-brand-500/10 focus-within:border-brand-500 transition-all">
-                        <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                        <input 
-                            type="text" 
-                            placeholder="Search items..." 
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="bg-transparent outline-none text-sm font-bold w-full text-slate-900 placeholder:text-slate-400" 
-                        />
+                    <div className="flex items-center gap-3">
+                        <div className="bg-white border-2 border-slate-100 h-14 w-full sm:w-64 rounded-2xl flex items-center px-4 gap-3 focus-within:ring-4 focus-within:ring-brand-500/10 focus-within:border-brand-500 transition-all">
+                            <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                            <input 
+                                type="text" 
+                                placeholder="Search items..." 
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="bg-transparent outline-none text-sm font-bold w-full text-slate-900 placeholder:text-slate-400" 
+                            />
+                        </div>
+                        
+                        <div className="relative group">
+                            <select 
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                                className="bg-white border-2 border-slate-100 h-14 pl-6 pr-12 rounded-2xl outline-none font-black text-[10px] uppercase tracking-widest text-slate-600 appearance-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all cursor-pointer min-w-[140px]"
+                            >
+                                <option value="all">All Status</option>
+                                <option value="active">Active Only</option>
+                                <option value="inactive">Inactive Only</option>
+                            </select>
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-brand-500 transition-colors">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
+                            </div>
+                        </div>
                     </div>
+                    
                     <button 
                         onClick={handlePrintPriceList}
                         disabled={printing}

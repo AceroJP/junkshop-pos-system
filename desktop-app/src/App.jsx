@@ -442,13 +442,19 @@ function App() {
             </button>
           </div>
           
-          {appVersion && (
-            <div className="text-center">
-              <span className="text-slate-300 text-[8px] font-black uppercase tracking-[0.3em]">
+          <div className="text-center space-y-1">
+            {appVersion && (
+              <p className="text-slate-300 text-[8px] font-black uppercase tracking-[0.3em]">
                 Version {appVersion}
-              </span>
-            </div>
-          )}
+              </p>
+            )}
+            <p className="text-slate-400 text-[7px] font-bold uppercase tracking-[0.2em]">
+              © {new Date().getFullYear()} All Rights Reserved
+            </p>
+            <p className="text-slate-400 text-[7px] font-bold uppercase tracking-[0.2em]">
+              Developed by <span className="text-brand-500">Joenil Acero</span>
+            </p>
+          </div>
         </div>
       </aside>
 

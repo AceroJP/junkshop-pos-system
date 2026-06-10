@@ -194,7 +194,7 @@ const printReceipt = async (transaction, items) => {
 
         printer.alignCenter();
         printer.println(shopName.toUpperCase());
-        printer.println("SALES RECEIPT");
+        printer.println("TEMPORARY PURCHASE RECEIPT");
         printer.println("------------------------------------------");
         printer.alignLeft();
         printer.println(`No: ${transaction.transaction_number}`);
