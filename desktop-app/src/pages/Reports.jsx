@@ -7,7 +7,7 @@ import {
 import { generateReportPDF } from '../utils/pdfGenerator';
 
 const Reports = ({ shopSettings }) => {
-    const [period, setPeriod] = useState('overall');
+    const [period, setPeriod] = useState('today');
     const [transactionDates, setTransactionDates] = useState([]);
     const [customDates, setCustomDates] = useState({
         start: new Date().toISOString().split('T')[0],
@@ -19,13 +19,51 @@ const Reports = ({ shopSettings }) => {
         balanceOwed: 0, 
         salesByProduct: [], 
         transactions: [],
-        creditSummary: [] 
+        creditSummary: [],
+        trendData: []
     });
     const [loading, setLoading] = useState(true);
     const [isMounted, setIsMounted] = useState(false);
     const [showExportDropdown, setShowExportDropdown] = useState(false);
 
     const COLORS = ['#0ea5e9', '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b', '#10b981'];
+
+    const handleGraphClick = (data) => {
+        if (!data || !data.activePayload || !data.activePayload[0]) return;
+        
+        const payload = data.activePayload[0].payload;
+        const value = payload.filter_value;
+
+        if (period === 'month') {
+            // Drill down from Week to Days
+            // Calculate start and end of that week in the current month
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            const weekNum = parseInt(value);
+            
+            const startDay = (weekNum - 1) * 7 + 1;
+            const endDay = Math.min(weekNum * 7, new Date(year, month + 1, 0).getDate());
+            
+            const startDate = new Date(year, month, startDay).toISOString().split('T')[0];
+            const endDate = new Date(year, month, endDay).toISOString().split('T')[0];
+            
+            setCustomDates({ start: startDate, end: endDate });
+            setPeriod('custom');
+        } else if (period === 'week' || (period === 'custom' && customDates.start !== customDates.end)) {
+            // Drill down from Day to Hours
+            setCustomDates({ start: value, end: value });
+            setPeriod('custom');
+        }
+    };
+
+    const selectQuickMonth = (monthsBack) => {
+        const now = new Date();
+        const start = new Date(now.getFullYear(), now.getMonth() - monthsBack, 1).toISOString().split('T')[0];
+        const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+        setCustomDates({ start, end });
+        setPeriod('custom');
+    };
 
     useEffect(() => {
         setIsMounted(true);
@@ -66,7 +104,8 @@ const Reports = ({ shopSettings }) => {
                     balanceOwed: result.balanceOwed || 0,
                     salesByProduct: result.salesByProduct || [],
                     transactions: result.transactions || [],
-                    creditSummary: result.creditSummary || []
+                    creditSummary: result.creditSummary || [],
+                    trendData: result.trendData || []
                 });
             }
         } catch (err) {
@@ -258,8 +297,8 @@ const Reports = ({ shopSettings }) => {
                 <div className="md:col-span-1 lg:col-span-1 space-y-4">
                     <div className="bg-white p-6 rounded-[1.5rem] lg:rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Time Period Filter</p>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-1 gap-2">
-                            {['overall', 'today', 'week', 'month'].map((p) => (
+                        <div className="grid grid-cols-3 md:grid-cols-1 gap-2">
+                            {['today', 'week', 'month'].map((p) => (
                                 <button 
                                     key={p}
                                     onClick={() => setPeriod(p)}
@@ -278,6 +317,21 @@ const Reports = ({ shopSettings }) => {
                             >
                                 Custom Range
                             </button>
+                            
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={() => selectQuickMonth(0)}
+                                    className="flex-1 px-2 py-2 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-lg text-[8px] font-black uppercase tracking-widest border border-slate-100 transition-colors"
+                                >
+                                    This Month
+                                </button>
+                                <button 
+                                    onClick={() => selectQuickMonth(1)}
+                                    className="flex-1 px-2 py-2 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-lg text-[8px] font-black uppercase tracking-widest border border-slate-100 transition-colors"
+                                >
+                                    Last 2 Mos
+                                </button>
+                            </div>
                             
                             {period === 'custom' && (
                                 <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
@@ -327,20 +381,16 @@ const Reports = ({ shopSettings }) => {
                         </div>
                     </div>
 
-                    <div className="bg-slate-900 p-6 lg:p-8 rounded-[1.5rem] lg:rounded-[2rem] text-white space-y-4">
+                    <div className="bg-slate-900 p-6 lg:p-8 rounded-[1.5rem] lg:rounded-[2rem] text-white space-y-4 shadow-2xl shadow-slate-200">
                         <div className="space-y-1">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Period Purchases</p>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Period Purchases Total</p>
                             <p className="text-2xl sm:text-3xl lg:text-4xl font-black text-emerald-400 leading-none break-words">
                                 ₱{(stats.totalPurchases || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </p>
                         </div>
-                        <div className="pt-4 border-t border-white/10 space-y-1">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Overall Total Purchases</p>
-                            <p className="text-xl lg:text-2xl font-black text-white leading-none">
-                                ₱{(stats.grandTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </p>
-                        </div>
-                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest pt-1">Period: {period}</p>
+                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest pt-1 border-t border-white/5">
+                            Active Period: <span className="text-white">{period === 'custom' ? `${customDates.start} to ${customDates.end}` : period}</span>
+                        </p>
                     </div>
 
                     <div className="bg-rose-950 p-6 lg:p-8 rounded-[1.5rem] lg:rounded-[2rem] text-white space-y-2 border border-rose-900/50">
@@ -353,191 +403,138 @@ const Reports = ({ shopSettings }) => {
                 </div>
 
                 {/* Charts Area */}
-                <div className="md:col-span-1 lg:col-span-3 grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-                    <div className="bg-white p-6 lg:p-8 rounded-[1.5rem] lg:rounded-[2rem] border border-slate-100 shadow-sm flex flex-col min-h-[350px] lg:h-[400px]">
-                        <h3 className="text-xs lg:text-sm font-black text-slate-900 uppercase tracking-tight mb-6 flex items-center gap-3">
-                            <span className="w-2 h-2 bg-brand-500 rounded-full"></span>
-                            Scrap Sales Distribution
-                        </h3>
-                        <div className="flex-1 min-h-[250px] lg:min-h-0">
-                            {isMounted && stats.salesByProduct.length > 0 ? (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={stats.salesByProduct}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={window.innerWidth < 1024 ? 40 : 60}
-                                            outerRadius={window.innerWidth < 1024 ? 60 : 80}
-                                            paddingAngle={5}
-                                            dataKey="total_amount"
-                                        >
-                                            {stats.salesByProduct.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip 
-                                            contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                                            formatter={(value) => `₱${value.toFixed(2)}`}
-                                        />
-                                        <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }} />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                <div className="h-full flex flex-col items-center justify-center opacity-20">
-                                    <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                                    <p className="text-[10px] font-black uppercase tracking-widest">No data for charts</p>
-                                </div>
-                            )}
+                <div className="md:col-span-1 lg:col-span-3 grid grid-cols-1 gap-4 lg:gap-6">
+                    {/* Purchase Trends Chart */}
+                    <div className="bg-white p-6 lg:p-8 rounded-[1.5rem] lg:rounded-[2rem] border border-slate-100 shadow-sm flex flex-col min-h-[400px]">
+                        <div className="flex items-center justify-between mb-8">
+                            <h3 className="text-xs lg:text-sm font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
+                                <span className="w-2 h-2 bg-brand-500 rounded-full animate-pulse"></span>
+                                Purchase Trends
+                            </h3>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                                    {period === 'today' ? 'Real-time View' : period === 'week' ? 'Daily View' : 'Weekly View'}
+                                </span>
+                                <p className="text-[8px] font-black text-brand-600 uppercase tracking-widest bg-brand-50 px-2 py-1 rounded-md border border-brand-100 animate-bounce">
+                                    Click Bar to Drill Down
+                                </p>
+                            </div>
                         </div>
-                    </div>
-
-                    <div className="bg-white p-6 lg:p-8 rounded-[1.5rem] lg:rounded-[2rem] border border-slate-100 shadow-sm flex flex-col min-h-[350px] lg:h-[400px]">
-                        <h3 className="text-xs lg:text-sm font-black text-slate-900 uppercase tracking-tight mb-6 flex items-center gap-3">
-                            <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
-                            Volume by Scrap Type (kg)
-                        </h3>
-                        <div className="flex-1 min-h-[250px] lg:min-h-0">
-                            {isMounted && stats.salesByProduct.length > 0 ? (
+                        <div className="flex-1 min-h-[300px]">
+                            {isMounted && stats.trendData && stats.trendData.length > 0 ? (
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={stats.salesByProduct}>
+                                    <BarChart data={stats.trendData} onClick={handleGraphClick}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 'bold' }} dy={10} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 'bold' }} />
-                                        <Tooltip 
-                                            cursor={{ fill: '#f8fafc' }}
-                                            contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                                            formatter={(value) => `${value.toFixed(2)} kg`}
+                                        <XAxis 
+                                            dataKey="label" 
+                                            axisLine={false} 
+                                            tickLine={false} 
+                                            tick={{ fontSize: 9, fontWeight: 'black', fill: '#64748b' }} 
+                                            dy={10} 
                                         />
-                                        <Bar dataKey="total_weight" fill="#0ea5e9" radius={[4, 4, 0, 0]} barSize={window.innerWidth < 640 ? 15 : 30} />
+                                        <YAxis 
+                                            axisLine={false} 
+                                            tickLine={false} 
+                                            tick={{ fontSize: 9, fontWeight: 'black', fill: '#64748b' }} 
+                                            tickFormatter={(val) => `₱${val >= 1000 ? (val/1000).toFixed(1) + 'k' : val}`}
+                                        />
+                                        <Tooltip 
+                                            cursor={{ fill: '#f1f5f9', radius: 8 }}
+                                            contentStyle={{ 
+                                                borderRadius: '1.5rem', 
+                                                border: 'none', 
+                                                boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
+                                                padding: '12px 16px'
+                                            }}
+                                            formatter={(value) => [`₱${value.toLocaleString()}`, 'Amount']}
+                                            labelStyle={{ fontSize: '10px', fontWeight: '900', color: '#0f172a', marginBottom: '4px', textTransform: 'uppercase' }}
+                                        />
+                                        <Bar 
+                                            dataKey="amount" 
+                                            fill="#0ea5e9" 
+                                            radius={[8, 8, 8, 8]} 
+                                            barSize={period === 'today' ? undefined : 40}
+                                            className="cursor-pointer hover:fill-brand-600 transition-colors"
+                                        />
                                     </BarChart>
                                 </ResponsiveContainer>
                             ) : (
                                 <div className="h-full flex flex-col items-center justify-center opacity-20">
-                                    <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                                    <p className="text-[10px] font-black uppercase tracking-widest">No data for charts</p>
+                                    <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" /></svg>
+                                    <p className="text-[10px] font-black uppercase tracking-widest">No trend data for this period</p>
                                 </div>
                             )}
                         </div>
                     </div>
-                </div>
-            </div>
 
-            {/* Credit Summary Table */}
-            <div className="bg-white rounded-[1.5rem] lg:rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
-                <div className="p-6 lg:p-8 border-b border-slate-50 flex items-center justify-between">
-                    <h3 className="text-xs lg:text-sm font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
-                        <span className="w-2 h-2 bg-rose-500 rounded-full"></span>
-                        Credit & Balance Summary
-                    </h3>
-                    <span className="text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-full">{stats.creditSummary.length} Active Credits</span>
-                </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full min-w-[600px]">
-                        <thead className="bg-slate-50/50 border-b border-slate-100">
-                            <tr>
-                                <th className="px-6 lg:px-10 py-4 lg:py-6 text-left text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Seller Name</th>
-                                <th className="px-6 lg:px-10 py-4 lg:py-6 text-right text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Partial Paid</th>
-                                <th className="px-6 lg:px-10 py-4 lg:py-6 text-right text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Balance Owed</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            {loading ? (
-                                <tr>
-                                    <td colSpan="3" className="px-10 py-10 text-center">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-brand-500 mx-auto"></div>
-                                    </td>
-                                </tr>
-                            ) : stats.creditSummary.length === 0 ? (
-                                <tr>
-                                    <td colSpan="3" className="px-10 py-16 text-center">
-                                        <div className="flex flex-col items-center gap-3 opacity-20">
-                                            <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                            <p className="font-black uppercase tracking-[0.2em] text-[10px]">No outstanding credits</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ) : (
-                                stats.creditSummary.map((c, idx) => (
-                                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors group text-[11px] lg:text-sm">
-                                        <td className="px-6 lg:px-10 py-4 lg:py-6">
-                                            <span className="font-black text-slate-900 uppercase tracking-tight">{c.name}</span>
-                                        </td>
-                                        <td className="px-6 lg:px-10 py-4 lg:py-6 text-right">
-                                            <span className="font-bold text-slate-400 italic">
-                                                {c.total_partial_paid > 0 ? `₱${c.total_partial_paid.toFixed(2)}` : '—'}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 lg:px-10 py-4 lg:py-6 text-right">
-                                            <span className="font-black text-rose-600 text-sm lg:text-lg">₱{c.total_balance_owed.toFixed(2)}</span>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+                        <div className="bg-white p-6 lg:p-8 rounded-[1.5rem] lg:rounded-[2rem] border border-slate-100 shadow-sm flex flex-col min-h-[350px]">
+                            <h3 className="text-xs lg:text-sm font-black text-slate-900 uppercase tracking-tight mb-6 flex items-center gap-3">
+                                <span className="w-2 h-2 bg-brand-500 rounded-full"></span>
+                                Scrap Sales Distribution
+                            </h3>
+                            <div className="flex-1 min-h-[250px] lg:min-h-0">
+                                {isMounted && stats.salesByProduct.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={stats.salesByProduct}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={60}
+                                                outerRadius={80}
+                                                paddingAngle={5}
+                                                dataKey="total_amount"
+                                            >
+                                                {stats.salesByProduct.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip 
+                                                contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                                                formatter={(value) => `₱${value.toFixed(2)}`}
+                                            />
+                                            <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }} />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div className="h-full flex flex-col items-center justify-center opacity-20">
+                                        <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                                        <p className="text-[10px] font-black uppercase tracking-widest">No data for charts</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
 
-            {/* Detailed Table */}
-            <div className="bg-white rounded-[1.5rem] lg:rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
-                <div className="p-6 lg:p-8 border-b border-slate-50 flex items-center justify-between">
-                    <h3 className="text-xs lg:text-sm font-black text-slate-900 uppercase tracking-tight">Period Transactions</h3>
-                    <span className="text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-full">{stats.transactions.length} Records</span>
-                </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full min-w-[800px]">
-                        <thead className="bg-slate-50/50 border-b border-slate-100">
-                            <tr>
-                                <th className="px-6 lg:px-10 py-4 lg:py-6 text-left text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Transaction ID</th>
-                                <th className="px-6 lg:px-10 py-4 lg:py-6 text-left text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Date & Time</th>
-                                <th className="px-6 lg:px-10 py-4 lg:py-6 text-left text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Customer</th>
-                                <th className="px-6 lg:px-10 py-4 lg:py-6 text-left text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Cashier</th>
-                                <th className="px-6 lg:px-10 py-4 lg:py-6 text-right text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Total Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            {loading ? (
-                                <tr>
-                                    <td colSpan="5" className="px-10 py-20 text-center">
-                                        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-brand-500 mx-auto"></div>
-                                    </td>
-                                </tr>
-                            ) : stats.transactions.length === 0 ? (
-                                <tr>
-                                    <td colSpan="5" className="px-10 py-20 text-center">
-                                        <div className="flex flex-col items-center gap-4 opacity-20">
-                                            <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                            <p className="font-black uppercase tracking-[0.3em] text-xs">No transactions found for this period</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ) : (
-                                stats.transactions.map(t => (
-                                    <tr key={t.id} className="hover:bg-slate-50/50 transition-colors group text-[11px] lg:text-sm">
-                                        <td className="px-6 lg:px-10 py-4 lg:py-6">
-                                            <span className="font-black text-slate-900 uppercase tracking-tight">{t.transaction_number}</span>
-                                        </td>
-                                        <td className="px-6 lg:px-10 py-4 lg:py-6">
-                                            <div className="flex flex-col">
-                                                <span className="font-bold text-slate-700">{new Date(t.created_at + ' UTC').toLocaleDateString()}</span>
-                                                <span className="text-[9px] lg:text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(t.created_at + ' UTC').toLocaleTimeString()}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 lg:px-10 py-4 lg:py-6">
-                                            <span className="font-bold text-slate-600">{t.customer_name || 'Walk-in'}</span>
-                                        </td>
-                                        <td className="px-6 lg:px-10 py-4 lg:py-6">
-                                            <span className="font-bold text-slate-600">{t.cashier_name || 'System'}</span>
-                                        </td>
-                                        <td className="px-6 lg:px-10 py-4 lg:py-6 text-right">
-                                            <span className="font-black text-brand-600 text-sm lg:text-lg">₱{t.total_amount.toFixed(2)}</span>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+                        <div className="bg-white p-6 lg:p-8 rounded-[1.5rem] lg:rounded-[2rem] border border-slate-100 shadow-sm flex flex-col min-h-[350px]">
+                            <h3 className="text-xs lg:text-sm font-black text-slate-900 uppercase tracking-tight mb-6 flex items-center gap-3">
+                                <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                                Volume by Scrap Type (kg)
+                            </h3>
+                            <div className="flex-1 min-h-[250px] lg:min-h-0">
+                                {isMounted && stats.salesByProduct.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={stats.salesByProduct}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 'bold' }} dy={10} />
+                                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 'bold' }} />
+                                            <Tooltip 
+                                                cursor={{ fill: '#f8fafc' }}
+                                                contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                                                formatter={(value) => `${value.toFixed(2)} kg`}
+                                            />
+                                            <Bar dataKey="total_weight" fill="#0ea5e9" radius={[4, 4, 0, 0]} barSize={window.innerWidth < 640 ? 15 : 30} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div className="h-full flex flex-col items-center justify-center opacity-20">
+                                        <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                                        <p className="text-[10px] font-black uppercase tracking-widest">No data for charts</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

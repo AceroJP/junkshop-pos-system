@@ -199,10 +199,16 @@ ipcMain.handle('reprint-receipt', async (event, transactionId) => {
     }
 });
 
+// Helper to get Philippine Time
+const getPHT = () => {
+    return new Date(new Date().getTime() + (8 * 60 * 60 * 1000)).toISOString().replace('T', ' ').replace('Z', '');
+};
+
 ipcMain.handle('save-transaction', async (event, transactionData) => {
     const { total_amount, payment_received, change_amount, items, cashier_id, cashier_name, customer_name, status, seller_id } = transactionData;
     const transaction_number = `TXN-${Date.now()}`;
     const paymentStatus = status || 'completed';
+    const phtNow = getPHT();
 
     try {
         let finalSellerId = seller_id;
@@ -219,8 +225,8 @@ ipcMain.handle('save-transaction', async (event, transactionData) => {
         }
 
         const txn = await db.run(
-            'INSERT INTO transactions (transaction_number, cashier_id, cashier_name, customer_name, seller_id, total_amount, payment_received, change_amount, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [transaction_number, cashier_id, cashier_name || null, customer_name || null, finalSellerId || null, total_amount, payment_received, change_amount, paymentStatus]
+            'INSERT INTO transactions (transaction_number, cashier_id, cashier_name, customer_name, seller_id, total_amount, payment_received, change_amount, status, created_at, paid_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [transaction_number, cashier_id, cashier_name || null, customer_name || null, finalSellerId || null, total_amount, payment_received, change_amount, paymentStatus, phtNow, paymentStatus === 'completed' ? phtNow : null]
         );
 
         const transactionId = txn.id;
@@ -502,20 +508,21 @@ ipcMain.handle('save-pdf', async (event, { filename, base64Data, printDirectly }
 
 ipcMain.handle('get-report-stats', async (event, { period, startDate, endDate }) => {
     try {
+        const phtNowStr = getPHT().split(' ')[0]; // YYYY-MM-DD in PHT
         let dateFilter = "";
         const params = [];
 
         if (period === 'custom' && startDate && endDate) {
-            dateFilter = "date(created_at) BETWEEN date(?) AND date(?)";
+            dateFilter = `date(created_at) BETWEEN date(?) AND date(?)`;
             params.push(startDate, endDate);
         } else if (period === 'today') {
-            dateFilter = "date(created_at) = date('now')";
+            dateFilter = `date(created_at) = '${phtNowStr}'`;
         } else if (period === 'week') {
-            dateFilter = "date(created_at) >= date('now', '-7 days')";
+            dateFilter = `date(created_at) >= date('${phtNowStr}', '-7 days')`;
         } else if (period === 'month') {
-            dateFilter = "date(created_at) >= date('now', 'start of month')";
+            dateFilter = `date(created_at) >= date('${phtNowStr}', 'start of month')`;
         } else if (period === 'year') {
-            dateFilter = "date(created_at) >= date('now', 'start of year')";
+            dateFilter = `date(created_at) >= date('${phtNowStr}', 'start of year')`;
         } else {
             dateFilter = "1=1"; // Overall
         }
@@ -560,6 +567,53 @@ ipcMain.handle('get-report-stats', async (event, { period, startDate, endDate })
             ORDER BY total_balance_owed DESC
         `);
 
+        // 7. Purchase Trend Data (For Graph)
+        let trendData = [];
+        let trendQuery = "";
+        
+        if (period === 'today' || (period === 'custom' && startDate === endDate)) {
+            // Each individual transaction as a separate bar for real-time tracking
+            const targetDate = (period === 'custom') ? `'${startDate}'` : `'${phtNowStr}'`;
+            trendQuery = `
+                SELECT strftime('%H:%M', created_at) as label, total_amount as amount, 
+                       id as filter_value
+                FROM transactions 
+                WHERE date(created_at) = ${targetDate}
+                ORDER BY created_at ASC
+            `;
+        } else if (period === 'week') {
+            // Group by day of week
+            trendQuery = `
+                SELECT date(created_at) as label, SUM(total_amount) as amount, 
+                       date(created_at) as filter_value
+                FROM transactions 
+                WHERE date(created_at) >= date('${phtNowStr}', '-7 days')
+                GROUP BY label ORDER BY label ASC
+            `;
+        } else if (period === 'month') {
+            // Group by week of the month
+            trendQuery = `
+                SELECT 'Week ' || ((strftime('%d', created_at) - 1) / 7 + 1) as label, SUM(total_amount) as amount,
+                       ((strftime('%d', created_at) - 1) / 7 + 1) as filter_value
+                FROM transactions 
+                WHERE date(created_at) >= date('${phtNowStr}', 'start of month')
+                GROUP BY label ORDER BY label ASC
+            `;
+        } else if (period === 'custom') {
+            // Default to grouping by day for custom ranges
+            trendQuery = `
+                SELECT date(created_at) as label, SUM(total_amount) as amount,
+                       date(created_at) as filter_value
+                FROM transactions 
+                WHERE date(created_at) BETWEEN date(?) AND date(?)
+                GROUP BY label ORDER BY label ASC
+            `;
+        }
+
+        if (trendQuery) {
+            trendData = await db.all(trendQuery, period === 'custom' ? [startDate, endDate] : []);
+        }
+
         return {
             success: true,
             totalPurchases: purchases.total || 0,
@@ -567,7 +621,8 @@ ipcMain.handle('get-report-stats', async (event, { period, startDate, endDate })
             balanceOwed: balanceOwed.total || 0,
             salesByProduct,
             transactions,
-            creditSummary
+            creditSummary,
+            trendData
         };
     } catch (err) {
         console.error('Report stats failed', err);
@@ -626,6 +681,14 @@ ipcMain.handle('complete-setup', async (event, setupData) => {
 // Auth Handlers
 ipcMain.handle('login', async (event, { username, password }) => {
     return await auth.login(username, password);
+});
+
+ipcMain.handle('get-current-user', async () => {
+    return auth.getCurrentUser();
+});
+
+ipcMain.handle('update-account', async (event, data) => {
+    return await auth.updateAccount(data);
 });
 
 ipcMain.handle('reset-password-with-master-key', async (event, data) => {

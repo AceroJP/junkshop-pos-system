@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld('electron', {
     getAdminInfo: (secretCode) => ipcRenderer.invoke('get-admin-info', secretCode),
     resetAdminAccount: (data) => ipcRenderer.invoke('reset-admin-account', data),
     logout: () => ipcRenderer.invoke('logout'),
+    getCurrentUser: () => ipcRenderer.invoke('get-current-user'),
+    updateAccount: (data) => ipcRenderer.invoke('update-account', data),
 
     // Products
     getProducts: () => ipcRenderer.invoke('get-products'),
@@ -30,7 +32,8 @@ contextBridge.exposeInMainWorld('electron', {
     reprintReceipt: (id) => ipcRenderer.invoke('reprint-receipt', id),
     savePDF: (data) => ipcRenderer.invoke('save-pdf', data),
     saveExcel: (data) => ipcRenderer.invoke('save-excel', data),
-    getReportStats: (params) => ipcRenderer.invoke('get-report-stats', params),
+    getReportStats: (filters) => ipcRenderer.invoke('get-report-stats', filters),
+    getTransactionDates: () => ipcRenderer.invoke('get-transaction-dates'),
     openExternal: (url) => ipcRenderer.invoke('open-external', url),
 
     // Sellers & Credit

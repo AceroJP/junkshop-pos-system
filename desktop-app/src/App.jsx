@@ -19,9 +19,81 @@ function App() {
   const [user, setUser] = useState(null);
   const [currentPage, setCurrentPage] = useState('POS');
   const [appVersion, setAppVersion] = useState('');
-  const [activeModal, setActiveModal] = useState(null); // 'product', 'receipt', 'weight', 'checkout'
+  const [activeModal, setActiveModal] = useState(null); // 'product', 'receipt', 'weight', 'checkout', 'idle_warning'
   const [modalData, setModalData] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [idleCountdown, setIdleCountdown] = useState(10);
+
+  useEffect(() => {
+    let timer;
+    let countdownInterval;
+
+    const startCountdown = () => {
+      setIdleCountdown(10);
+      setActiveModal('idle_warning');
+      
+      countdownInterval = setInterval(() => {
+        setIdleCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(countdownInterval);
+            handleAutoLogout();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    };
+
+    const handleAutoLogout = async () => {
+      await window.electron.logout();
+      setUser(null);
+      setActiveModal(null);
+      Swal.fire({
+        title: 'Session Timeout',
+        text: 'You have been automatically logged out due to inactivity.',
+        icon: 'info',
+        confirmButtonColor: '#0ea5e9',
+        customClass: { popup: 'rounded-[2rem]' }
+      });
+    };
+
+    const resetTimer = () => {
+      if (timer) clearTimeout(timer);
+      if (countdownInterval) clearInterval(countdownInterval);
+      
+      // If the warning modal is open and user moves/types, close it
+      if (activeModal === 'idle_warning') {
+        setActiveModal(null);
+      }
+      
+      if (user && shopSettings.session_timeout_enabled === '1') {
+        const timeoutMinutes = parseInt(shopSettings.session_timeout_minutes) || 10;
+        // Set timer for (Total Time - 10 seconds)
+        const timeoutMs = (timeoutMinutes * 60 * 1000) - 10000;
+        
+        // Ensure we don't have a negative or too small timeout
+        const safeTimeoutMs = Math.max(timeoutMs, 1000);
+        timer = setTimeout(startCountdown, safeTimeoutMs);
+      }
+    };
+
+    if (user && shopSettings.session_timeout_enabled === '1') {
+      const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+      events.forEach(event => document.addEventListener(event, resetTimer));
+      
+      resetTimer();
+
+      return () => {
+        events.forEach(event => document.removeEventListener(event, resetTimer));
+        if (timer) clearTimeout(timer);
+        if (countdownInterval) clearInterval(countdownInterval);
+      };
+    } else {
+      if (timer) clearTimeout(timer);
+      if (countdownInterval) clearInterval(countdownInterval);
+      if (activeModal === 'idle_warning') setActiveModal(null);
+    }
+  }, [user, shopSettings.session_timeout_enabled, shopSettings.session_timeout_minutes]);
 
   const handleDeleteTransaction = async (transaction) => {
     const { value: password } = await Swal.fire({
@@ -328,7 +400,7 @@ function App() {
                 className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200 font-bold w-full ${currentPage === 'Inventory' ? 'bg-brand-600 text-white shadow-xl shadow-brand-100' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
-                <span className="whitespace-nowrap">Inventory</span>
+                <span className="whitespace-nowrap">We Buy</span>
               </button>
               <button 
                 onClick={() => { setCurrentPage('Sellers'); setIsSidebarOpen(false); }} 
@@ -385,9 +457,9 @@ function App() {
         <div className="absolute inset-0 overflow-y-auto p-4 sm:p-8 lg:p-12">
           {currentPage === 'POS' && <POS user={user} openModal={(type, data) => { setActiveModal(type); setModalData(data); }} />}
           {currentPage === 'Transactions' && <Transactions shopSettings={shopSettings} openModal={(type, data) => { setActiveModal(type); setModalData(data); }} />}
-          {currentPage === 'Inventory' && <Products openModal={(type, data) => { setActiveModal(type); setModalData(data); }} />}
+          {currentPage === 'Inventory' && <Products shopSettings={shopSettings} openModal={(type, data) => { setActiveModal(type); setModalData(data); }} />}
           {currentPage === 'Sellers' && <Sellers openModal={(type, data) => { setActiveModal(type); setModalData(data); }} />}
-          {currentPage === 'Settings' && <Settings shopSettings={shopSettings} onSettingsUpdate={initApp} />}
+          {currentPage === 'Settings' && <Settings user={user} shopSettings={shopSettings} onSettingsUpdate={initApp} />}
           {currentPage === 'Reports' && <Reports shopSettings={shopSettings} />}
         </div>
       </main>
@@ -526,7 +598,7 @@ function App() {
                 <div className="p-8 lg:p-10 overflow-y-auto custom-scrollbar">
                   <div className="flex items-center justify-between mb-8">
                     <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
-                      {modalData.editingProduct ? 'Edit Product' : 'Add New Product'}
+                      {modalData.editingProduct ? 'Edit Scrap Type' : 'Add New Scrap Type'}
                     </h3>
                     <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-rose-500 transition-colors p-2 hover:bg-rose-50 rounded-xl">
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -536,7 +608,7 @@ function App() {
                   <form onSubmit={modalData.onSave} className="space-y-6">
                     {/* Photo Upload Section */}
                     <div className="space-y-3">
-                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Product Photo</label>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Scrap Photo</label>
                       <div className="flex items-center gap-6">
                         <div className="w-24 h-24 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
                           {modalData.formData.image_path ? (
@@ -557,7 +629,7 @@ function App() {
                     </div>
 
                     <div className="space-y-3">
-                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Product Name</label>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Scrap Name</label>
                       <input 
                         type="text" 
                         required
@@ -588,7 +660,7 @@ function App() {
                     <div className="flex gap-4 pt-4">
                       <button type="button" onClick={() => setActiveModal(null)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-black py-5 rounded-2xl transition-all uppercase tracking-widest text-sm">Cancel</button>
                       <button type="submit" disabled={modalData.loading} className="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-black py-5 rounded-2xl shadow-xl shadow-brand-100 transition-all uppercase tracking-widest text-sm">
-                        {modalData.loading ? 'Saving...' : 'Save Product'}
+                        {modalData.loading ? 'Saving...' : (modalData.editingProduct ? 'Save' : 'Add')}
                       </button>
                     </div>
                   </form>
@@ -683,6 +755,38 @@ function App() {
                     className="w-full py-4 text-slate-400 font-black uppercase tracking-widest text-[10px] hover:text-slate-600 transition-colors"
                   >
                     Cancel Transaction
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* 5. Idle Warning Modal */}
+            {activeModal === 'idle_warning' && (
+              <div className="bg-white w-full max-w-sm rounded-[3rem] shadow-[0_0_100px_rgba(0,0,0,0.2)] border border-slate-100 relative z-10 flex flex-col overflow-hidden pointer-events-auto animate-modal-in">
+                <div className="p-12 text-center space-y-8">
+                  <div className="relative w-24 h-24 mx-auto">
+                    <div className="absolute inset-0 bg-brand-100 rounded-full animate-ping opacity-20"></div>
+                    <div className="relative w-24 h-24 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center">
+                      <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Idle Warning</h3>
+                    <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">Are you still there?</p>
+                  </div>
+
+                  <div className="bg-slate-50 rounded-2xl p-6 border-2 border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Logging out in</p>
+                    <span className="text-5xl font-black text-brand-600 tracking-tighter">{idleCountdown}</span>
+                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest ml-2">Seconds</span>
+                  </div>
+
+                  <button 
+                    onClick={() => setActiveModal(null)}
+                    className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-5 rounded-2xl shadow-xl shadow-slate-200 transition-all uppercase tracking-widest text-sm"
+                  >
+                    I'm still here
                   </button>
                 </div>
               </div>

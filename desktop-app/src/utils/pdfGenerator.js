@@ -103,6 +103,78 @@ export const generateReceiptPDF = async (transaction, items, shopSettings) => {
     };
 };
 
+export const generatePriceListPDF = async (products, shopSettings) => {
+    const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+    });
+
+    const shopName = shopSettings.shop_name || 'JUNKSHOP POS SYSTEM';
+    const shopLogo = shopSettings.shop_logo;
+
+    // --- Header ---
+    let currentY = 15;
+
+    if (shopLogo) {
+        try {
+            // Center the logo
+            doc.addImage(shopLogo, 'PNG', 148.5 - 20, currentY, 40, 40, undefined, 'FAST');
+            currentY += 50; // Adjusted gap for size 18 font
+        } catch (e) {
+            console.error('Error adding logo to PDF', e);
+        }
+    }
+
+    doc.setFontSize(18); // Junkshop name size 18
+    doc.setFont('helvetica', 'normal');
+    doc.text(shopName.toUpperCase(), 148.5, currentY, { align: 'center' });
+    currentY += 15; // Space before table
+
+    // --- Table ---
+    const activeProducts = products.filter(p => p.status !== 'inactive');
+    const tableData = activeProducts.map(p => [
+        p.name.toUpperCase(),
+        `P ${p.price_per_kg.toFixed(2)}`
+    ]);
+
+    autoTable(doc, {
+        startY: currentY,
+        head: [['WE BUY', 'PRICE']],
+        body: tableData,
+        theme: 'grid',
+        showHead: 'firstPage', // Changed from 'first' to 'firstPage'
+        headStyles: { 
+            fillColor: [240, 240, 240], 
+            textColor: [0, 0, 0], 
+            fontStyle: 'bold', 
+            fontSize: 20, // Headers bold size 20
+            halign: 'center',
+            lineWidth: 0.5,
+            lineColor: [0, 0, 0]
+        },
+        styles: { 
+            fontSize: 18, // Item names and price size 18
+            cellPadding: 5, 
+            fontStyle: 'normal',
+            textColor: [0, 0, 0],
+            lineWidth: 0.5,
+            lineColor: [0, 0, 0]
+        },
+        columnStyles: {
+            0: { cellWidth: 'auto', halign: 'left' },
+            1: { cellWidth: 60, halign: 'center' }
+        },
+        margin: { left: 20, right: 20 }
+    });
+
+    const pdfBase64 = doc.output('datauristring').split(',')[1];
+    return {
+        filename: `PriceList-${shopName.replace(/\s+/g, '-')}.pdf`,
+        base64Data: pdfBase64
+    };
+};
+
 export const generateReportPDF = async (reportData, shopSettings, period, startDate, endDate) => {
     const doc = new jsPDF({
         orientation: 'portrait',
@@ -164,14 +236,17 @@ export const generateReportPDF = async (reportData, shopSettings, period, startD
 
     // --- Content: Transactions Table ---
     const transHead = [['ID', 'Date', 'Time', 'Customer', 'Cashier', 'Total']];
-    const transBody = reportData.transactions.map(t => [
-        t.transaction_number,
-        new Date(t.created_at + ' UTC').toLocaleDateString(),
-        new Date(t.created_at + ' UTC').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        t.customer_name || 'Walk-in',
-        t.cashier_name || 'System',
-        `PHP ${t.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-    ]);
+    const transBody = reportData.transactions.map(t => {
+        const phtDate = new Date(new Date(t.created_at + ' UTC').getTime() + (8 * 60 * 60 * 1000));
+        return [
+            t.transaction_number,
+            phtDate.toLocaleDateString(),
+            phtDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            t.customer_name || 'Walk-in',
+            t.cashier_name || 'System',
+            `PHP ${t.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        ];
+    });
 
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');

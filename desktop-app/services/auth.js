@@ -112,6 +112,47 @@ const logout = () => {
 const getCurrentUser = () => currentUser;
 
 /**
+ * Update account information (username and/or password)
+ */
+const updateAccount = async (data) => {
+    const { username, currentPassword, newPassword } = data;
+    
+    if (!currentUser) return { success: false, error: 'Not authenticated' };
+
+    try {
+        // 1. Verify current password
+        const user = await db.get("SELECT password FROM users WHERE id = ?", [currentUser.id]);
+        const match = await bcrypt.compare(currentPassword, user.password);
+        if (!match) return { success: false, error: 'Incorrect current password' };
+
+        // 2. Prepare updates
+        let query = "UPDATE users SET username = ? WHERE id = ?";
+        let params = [username, currentUser.id];
+
+        if (newPassword) {
+            const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+            query = "UPDATE users SET username = ?, password = ? WHERE id = ?";
+            params = [username, hashedNewPassword, currentUser.id];
+        }
+
+        // 3. Check if new username is taken
+        const existing = await db.get("SELECT id FROM users WHERE username = ? COLLATE NOCASE AND id != ?", [username, currentUser.id]);
+        if (existing) return { success: false, error: 'Username already taken' };
+
+        // 4. Execute update
+        await db.run(query, params);
+
+        // 5. Update session
+        currentUser.username = username;
+
+        return { success: true };
+    } catch (err) {
+        console.error('Update account error', err);
+        return { success: false, error: err.message };
+    }
+};
+
+/**
  * Verify admin password
  */
 const verifyAdminPassword = async (password) => {
@@ -161,6 +202,7 @@ module.exports = {
     login,
     logout,
     getCurrentUser,
+    updateAccount,
     verifyAdminPassword,
     resetPasswordWithMasterKey,
     getAdminInfo,

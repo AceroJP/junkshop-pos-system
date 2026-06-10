@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
+import { generatePriceListPDF } from '../utils/pdfGenerator';
 
-const Products = ({ openModal }) => {
+const Products = ({ shopSettings, openModal }) => {
     const [products, setProducts] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [editingProduct, setEditingProduct] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [printing, setPrinting] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
         price_per_kg: '',
@@ -140,6 +142,38 @@ const Products = ({ openModal }) => {
         syncModal(null, emptyForm, false);
     };
 
+    const handlePrintPriceList = async () => {
+        if (products.length === 0) {
+            Swal.fire('Empty List', 'There are no products to print.', 'info');
+            return;
+        }
+
+        setPrinting(true);
+        try {
+            const pdfData = await generatePriceListPDF(products, shopSettings);
+            const result = await window.electron.savePDF(pdfData);
+
+            if (result.success) {
+                Swal.fire({
+                    title: 'Success!',
+                    text: 'Price list PDF has been saved successfully.',
+                    icon: 'success',
+                    timer: 2000,
+                    showConfirmButton: false,
+                    customClass: {
+                        popup: 'rounded-[2rem]',
+                        title: 'font-black uppercase tracking-tight'
+                    }
+                });
+            }
+        } catch (err) {
+            console.error('Print failed', err);
+            Swal.fire('Error', 'Failed to generate price list PDF.', 'error');
+        } finally {
+            setPrinting(false);
+        }
+    };
+
     const handlePhotoUpload = async (e, currentEditingProduct, currentFormData) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -165,7 +199,7 @@ const Products = ({ openModal }) => {
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div className="space-y-1">
-                    <h2 className="text-4xl font-black text-slate-900 uppercase tracking-tight leading-none">Inventory</h2>
+                    <h2 className="text-4xl font-black text-slate-900 uppercase tracking-tight leading-none">We Buy</h2>
                     <p className="text-slate-400 font-bold uppercase tracking-[0.2em] text-[10px]">Manage items & pricing</p>
                 </div>
                 
@@ -174,18 +208,30 @@ const Products = ({ openModal }) => {
                         <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         <input 
                             type="text" 
-                            placeholder="Search inventory..." 
+                            placeholder="Search items..." 
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="bg-transparent outline-none text-sm font-bold w-full text-slate-900 placeholder:text-slate-400" 
                         />
                     </div>
                     <button 
+                        onClick={handlePrintPriceList}
+                        disabled={printing}
+                        className="bg-white hover:bg-slate-50 text-slate-900 border-2 border-slate-100 font-black px-6 py-4 rounded-2xl transition-all hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-3 uppercase tracking-widest text-sm h-14 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {printing ? (
+                            <div className="w-5 h-5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                        )}
+                        Print List
+                    </button>
+                    <button 
                         onClick={openAddModal}
                         className="bg-brand-600 hover:bg-brand-700 text-white font-black px-8 py-4 rounded-2xl shadow-xl shadow-brand-100 transition-all hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-3 uppercase tracking-widest text-sm h-14"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" /></svg>
-                        Add Product
+                        Add
                     </button>
                 </div>
             </div>

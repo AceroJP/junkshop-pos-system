@@ -246,13 +246,13 @@ const Transactions = ({ shopSettings, openModal }) => {
                                         </td>
                                         <td className="px-4 lg:px-8 py-6">
                                             <div className="flex flex-col gap-0.5">
-                                                <span className="font-bold text-slate-700 text-xs lg:text-sm">{new Date(t.created_at + ' UTC').toLocaleDateString()}</span>
-                                                <span className="text-[9px] lg:text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(t.created_at + ' UTC').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                <span className="font-bold text-slate-700 text-xs lg:text-sm">{new Date(t.created_at).toLocaleDateString()}</span>
+                                                <span className="text-[9px] lg:text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                 {t.status === 'completed' && t.paid_at && (
                                                     <div className="mt-1 flex items-center gap-1 whitespace-nowrap">
                                                         <span className="text-[7px] lg:text-[8px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-50 px-1 py-0.5 rounded">Paid</span>
                                                         <span className="text-[8px] lg:text-[9px] font-bold text-emerald-600 uppercase tracking-tight">
-                                                            {new Date(t.paid_at + ' UTC').toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                            {new Date(t.paid_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                                         </span>
                                                     </div>
                                                 )}
@@ -260,7 +260,7 @@ const Transactions = ({ shopSettings, openModal }) => {
                                                     <div className="mt-1 flex items-center gap-1 whitespace-nowrap">
                                                         <span className="text-[7px] lg:text-[8px] font-black text-amber-500 uppercase tracking-widest bg-amber-50 px-1 py-0.5 rounded">Part</span>
                                                         <span className="text-[8px] lg:text-[9px] font-bold text-amber-600 uppercase tracking-tight">
-                                                            {new Date(t.paid_at + ' UTC').toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                            {new Date(t.paid_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                                         </span>
                                                     </div>
                                                 )}
