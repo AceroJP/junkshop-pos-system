@@ -1,7 +1,7 @@
 services:
   - type: web
     name: junkshop-pos-website
-    env: php
+    runtime: php
     plan: starter
     rootDir: web-admin
     buildCommand: |
@@ -44,3 +44,4 @@ services:
         value: sqlite
       - key: DB_DATABASE
         value: /tmp/database.sqlite
+
